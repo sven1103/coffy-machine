@@ -15,7 +15,7 @@ func (e *exampleEvent) AggregateID() string {
 	return e.ID
 }
 
-func (e *exampleEvent) OccurredOn() time.Time {
+func (e *exampleEvent) Occurred() time.Time {
 	return e.occurredOn
 }
 
@@ -28,7 +28,7 @@ func TestEvent(t *testing.T) {
 	exampleEvent := exampleEvent{ID: "123", occurredOn: currentTime}
 
 	returnedID := exampleEvent.AggregateID()
-	returnedTime := exampleEvent.OccurredOn()
+	returnedTime := exampleEvent.Occurred()
 
 	if returnedID != "123" {
 		t.Errorf("Event returned ID should be '123', got '%s'", returnedID)

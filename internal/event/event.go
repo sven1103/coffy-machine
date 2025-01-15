@@ -10,6 +10,6 @@ import (
 // The second property is the recorded time when the Event has happened.
 type Event interface {
 	AggregateID() string
-	OccurredOn() time.Time
+	Occurred() time.Time
 	Type() string
 }

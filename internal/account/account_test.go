@@ -38,9 +38,9 @@ func TestIncomingPayment(t *testing.T) {
 }
 
 func TestAccountCreation(t *testing.T) {
-	a, err := newAccount("Coffy")
+	a, err := NewAccount("Coffy")
 	if err != nil {
-		t.Errorf("Error creating new account: %s", err.Error())
+		t.Errorf("Error creating new Account: %s", err.Error())
 		return
 	}
 	if a.Owner() != "Coffy" {
@@ -53,5 +53,56 @@ func TestAccountCreation(t *testing.T) {
 	}
 	if events[0].Type() != "AccountCreated" {
 		t.Errorf("Event Type should be 'AccountCreated', got '%s'", events[0].Type())
+	}
+}
+
+func TestAccountConsumption(t *testing.T) {
+	a, err := NewAccount("Coffy")
+	if err != nil {
+		t.Errorf("Error creating new Account: %s", err.Error())
+	}
+	if err := a.Consume(0.25, "coffee cream"); err != nil {
+		t.Errorf("Error consuming Account: %s", err.Error())
+	}
+	if a.Balance() != -0.25 {
+		t.Errorf("Balance should be %f, got %f", -0.25, a.Balance())
+	}
+}
+
+func TestAccountConsumptionMalicious(t *testing.T) {
+	a, err := NewAccount("Coffy")
+	if err != nil {
+		t.Errorf("Error creating new Account: %s", err.Error())
+	}
+	// We try to consume a coffee with negative price to cheat our balance
+	if err := a.Consume(-0.25, "coffee cream"); err == nil {
+		t.Errorf("Expected error, got none")
+	}
+}
+
+func TestAccountPayment(t *testing.T) {
+	a, err := NewAccount("Coffy")
+	if err != nil {
+		t.Errorf("Error creating new Account: %s", err.Error())
+	}
+	amount := 5.00
+	reason := "debt balance"
+	if err := a.Pay(amount, reason); err != nil {
+		t.Errorf("Error paying Account: %s", err.Error())
+	}
+	if a.Balance() != amount {
+		t.Errorf("Balance should be %.2f, got %.2f", amount, a.Balance())
+	}
+}
+
+func TestAccountPaymentMalicious(t *testing.T) {
+	a, err := NewAccount("Coffy")
+	if err != nil {
+		t.Errorf("Error creating new Account: %s", err.Error())
+	}
+	amount := -5.00 // negative values for payment are not allowed
+	reason := "debt balance"
+	if err := a.Pay(amount, reason); err == nil {
+		t.Errorf("Expected error, got none")
 	}
 }
