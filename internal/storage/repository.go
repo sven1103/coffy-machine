@@ -1,14 +1,16 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 type EventRepository interface {
-	SaveAll([]EventEntry)
+	SaveAll([]EventEntry) error
 	LoadAll(aggregateID string) ([]EventEntry, error)
+	FetchAccountIDs() ([]EventEntry, error)
 }
 
 type EventEntry struct {
@@ -22,8 +24,14 @@ type eventRepositoryImpl struct {
 	db *gorm.DB
 }
 
-func (r *eventRepositoryImpl) SaveAll(events []EventEntry) {
+func (r *eventRepositoryImpl) SaveAll(events []EventEntry) (e error) {
+	defer func() {
+		if err := recover(); err != nil {
+			e = errors.New("saving events failed")
+		}
+	}()
 	r.db.Create(events)
+	return nil
 }
 
 func (r *eventRepositoryImpl) LoadAll(aggregateID string) ([]EventEntry, error) {
@@ -33,6 +41,15 @@ func (r *eventRepositoryImpl) LoadAll(aggregateID string) ([]EventEntry, error) 
 		return nil, fmt.Errorf("error loading events: %w", result.Error)
 	}
 	return users, nil
+}
+
+func (r *eventRepositoryImpl) FetchAccountIDs() ([]EventEntry, error) {
+	ids := make([]EventEntry, 0)
+	result := r.db.Where("event_type LIKE ?", "AccountCreated").Find(&ids)
+	if result.Error != nil {
+		return nil, fmt.Errorf("error fetching accounts: %w", result.Error)
+	}
+	return ids, nil
 }
 
 func CreateEventRepository(storage string) (EventRepository, error) {

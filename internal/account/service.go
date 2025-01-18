@@ -4,11 +4,39 @@ import (
 	"coffy/internal/event"
 	"coffy/internal/storage"
 	"encoding/json"
+	"errors"
 	"fmt"
 )
 
 type Accounting struct {
 	repo storage.EventRepository
+}
+
+func (a *Accounting) Create(owner string) (*Account, error) {
+	account, err := NewAccount(owner)
+	if err != nil {
+		return nil, fmt.Errorf("error creating account: %w", err)
+	}
+	entries, err := a.convertAll(account.events)
+	if err != nil {
+		return nil, fmt.Errorf("error converting events: %w", err)
+	}
+	if err := a.repo.SaveAll(entries); err != nil {
+		return nil, fmt.Errorf("error saving events: %w", err)
+	}
+	return account, nil
+}
+
+func (a *Accounting) convertAll(events []event.Event) ([]storage.EventEntry, error) {
+	entries := make([]storage.EventEntry, 0)
+	for _, e := range events {
+		entry, err := toEventEntry(e)
+		if err != nil {
+			return entries, err
+		}
+		entries = append(entries, entry)
+	}
+	return entries, nil
 }
 
 func (a *Accounting) Find(accountID string) (*Account, error) {
@@ -33,6 +61,18 @@ func (a *Accounting) Find(accountID string) (*Account, error) {
 	return acc, nil
 }
 
+func (a *Accounting) ListAll() ([]string, error) {
+	query, err := a.repo.FetchAccountIDs()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load accounts: %w", err)
+	}
+	ids := make([]string, 0)
+	for _, entry := range query {
+		ids = append(ids, entry.AggregateID)
+	}
+	return ids, nil
+}
+
 func convert(entry storage.EventEntry) (event.Event, error) {
 	switch entry.EventType {
 	case "AccountCreated":
@@ -55,6 +95,31 @@ func convert(entry storage.EventEntry) (event.Event, error) {
 		return evnt, nil
 	default:
 		return nil, fmt.Errorf("unknown event type: %s", entry.EventType)
+	}
+}
+
+func toEventEntry(event event.Event) (storage.EventEntry, error) {
+	switch t := event.(type) {
+	case accountCreated:
+		data, err := json.Marshal(t)
+		if err != nil {
+			return storage.EventEntry{}, err
+		}
+		return storage.EventEntry{AggregateID: t.AccountID, EventType: t.EventType, EventData: data}, nil
+	case incomingPayment:
+		data, err := json.Marshal(t)
+		if err != nil {
+			return storage.EventEntry{}, err
+		}
+		return storage.EventEntry{AggregateID: t.AccountID, EventType: t.EventType, EventData: data}, nil
+	case coffyConsumed:
+		data, err := json.Marshal(t)
+		if err != nil {
+			return storage.EventEntry{}, err
+		}
+		return storage.EventEntry{AggregateID: t.AccountID, EventType: t.EventType, EventData: data}, nil
+	default:
+		return storage.EventEntry{}, errors.New("unknown event type")
 	}
 }
 

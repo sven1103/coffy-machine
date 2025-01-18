@@ -3,52 +3,105 @@ package main
 import (
 	"coffy/internal/account"
 	"coffy/internal/storage"
-	"encoding/json"
-	"fmt"
+	"github.com/gin-gonic/gin"
+	"log"
+	"net/http"
+	"strings"
 )
 
 func main() {
 	repo, err := storage.CreateEventRepository("test.db")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-
 	service := account.NewAccounting(&repo)
 
-	acc, err := account.NewAccount("Sven")
-	if err != nil {
-		panic(err)
-	}
+	router := gin.Default()
 
-	err = acc.Consume(0.35, "coffee cream")
-	if err != nil {
-		panic(err)
-	}
-	err = acc.Consume(0.50, "latte macciato")
-	if err != nil {
-		panic(err)
-	}
+	setupRoutes(router, service)
 
-	eventEntries := make([]storage.EventEntry, 0)
-	for _, e := range acc.Events() {
-		serial, err := json.Marshal(e)
+	router.Run(":8088")
+}
+
+func setupRoutes(router *gin.Engine, service *account.Accounting) {
+	router.GET("/accounts", func(c *gin.Context) {
+		result, err := service.ListAll()
 		if err != nil {
-			panic(err)
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, gin.H{})
 		}
-		eventEntries = append(eventEntries, storage.EventEntry{AggregateID: e.AggregateID(), EventType: e.Type(), EventData: serial})
-	}
+		c.IndentedJSON(http.StatusOK, result)
+	})
 
-	repo.SaveAll(eventEntries)
+	router.GET("/accounts/:id", func(c *gin.Context) {
+		id := c.Param("id")
+		result, err := service.Find(id)
+		if err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+		alias, err := convertAccount(result)
+		if err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+		if alias.ID == "" {
+			c.JSON(http.StatusNotFound, gin.H{})
+			return
+		}
+		c.IndentedJSON(http.StatusOK, alias)
+	})
 
-	result, err := service.Find(acc.ID())
-	if err != nil {
-		panic(err)
-	}
+	router.POST("/accounts", func(c *gin.Context) {
+		var request AccountCreationRequest
 
-	fmt.Println(result)
-	fmt.Printf("Account balance of owner '%s' is €%.2f\n", acc.Owner(), acc.Balance())
+		if err := c.BindJSON(&request); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+			return
+		}
 
-	for _, e := range acc.Events() {
-		fmt.Println(e)
-	}
+		if strings.TrimSpace(request.Owner) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "owner required"})
+			return
+		}
+
+		acc, err := service.Create(request.Owner)
+		if err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+
+		alias, err := convertAccount(acc)
+		if err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+
+		c.JSON(http.StatusCreated, alias)
+	})
+}
+
+type AccountAlias struct {
+	ID            string  `json:"id"`
+	Owner         string  `json:"owner"`
+	Balance       float64 `json:"balance"`
+	ConsumedTotal int     `json:"consumedTotal"`
+}
+
+type AccountCreationRequest struct {
+	Owner string `json:"owner"`
+}
+
+func convertAccount(a *account.Account) (AccountAlias, error) {
+	return AccountAlias{ID: a.ID(), Owner: a.Owner(), Balance: a.Balance(), ConsumedTotal: a.ConsumedTotal()}, nil
+}
+
+type AccountCreatedResponse struct {
+	ID    string `json:"id"`
+	Owner string `json:"owner"`
 }

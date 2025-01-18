@@ -104,11 +104,21 @@ func (a *Account) applyPayment(e incomingPayment) error {
 	return nil
 }
 
+func (a *Account) ConsumedTotal() int {
+	consumed := 0
+	for _, e := range a.events {
+		if e.Type() == "CoffyConsumed" {
+			consumed += 1
+		}
+	}
+	return consumed
+}
+
 type accountCreated struct {
-	AccountID  string
-	OccurredOn time.Time
-	EventType  string
-	Owner      string
+	AccountID  string    `json:"accountID"`
+	OccurredOn time.Time `json:"occurredOn"`
+	EventType  string    `json:"eventType"`
+	Owner      string    `json:"owner"`
 }
 
 func newAccountCreated(accountID string, occurredOn time.Time, owner string) *accountCreated {
@@ -131,11 +141,11 @@ func (e accountCreated) AggregateID() string {
 // also records the coffee type (CoffyType) that has been consumed to increase the transparency and the
 // associated costs (Costs).
 type coffyConsumed struct {
-	AccountID  string
-	OccurredOn time.Time
-	eventType  string
-	CoffyType  string
-	Costs      float64
+	AccountID  string    `json:"accountID"`
+	OccurredOn time.Time `json:"occurredOn"`
+	EventType  string    `json:"eventType"`
+	CoffyType  string    `json:"coffyType"`
+	Costs      float64   `json:"costs"`
 }
 
 func newCoffyConsumed(accountID string, coffyType string, costs float64) *coffyConsumed {
@@ -147,11 +157,11 @@ func newCoffyConsumed(accountID string, coffyType string, costs float64) *coffyC
 // some maintenance materials, like descaling agent etc. The amount (Amount) represents the amount of money that
 // has been used to pay to the Account.
 type incomingPayment struct {
-	AccountID  string
-	OccurredOn time.Time
-	EventType  string
-	Amount     float64
-	Reason     string
+	AccountID  string    `json:"accountID"`
+	OccurredOn time.Time `json:"occurredOn"`
+	EventType  string    `json:"eventType"`
+	Amount     float64   `json:"amount"`
+	Reason     string    `json:"reason"`
 }
 
 func newIncomingPayment(accountID string, amount float64, reason string) *incomingPayment {
@@ -167,7 +177,7 @@ func (e coffyConsumed) Occurred() time.Time {
 }
 
 func (e coffyConsumed) Type() string {
-	return e.eventType
+	return e.EventType
 }
 
 func (e incomingPayment) AggregateID() string {
