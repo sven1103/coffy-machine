@@ -3,15 +3,34 @@ package main
 import (
 	"coffy/internal/account"
 	"coffy/internal/api"
+	"coffy/internal/cmd"
+	"coffy/internal/coffy"
 	"coffy/internal/product"
 	"coffy/internal/storage"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 )
 
+var version string = "1.0.0"
+
 func main() {
+	logStartup()
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println("Something went wrong:", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}()
+	cmd.Execute(startCoffy)
+}
+
+func startCoffy(config *coffy.Config) {
+	log.Println("Received app configuration")
 	repo, err := storage.CreateEventRepository("test.db")
 	if err != nil {
 		log.Fatal(err)
@@ -27,7 +46,11 @@ func main() {
 
 	router.POST("/beverages", api.CreateBeverage(beverageService))
 
-	router.Run(":8088")
+	router.Run(fmt.Sprintf(":%d", config.Server.Port))
+}
+
+func logStartup() {
+	log.Printf("Starting Coffy server (version: %s) ...", version)
 }
 
 func setupRoutes(router *gin.Engine, service *account.Accounting) {

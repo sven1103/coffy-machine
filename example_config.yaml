@@ -1,0 +1,3 @@
+server:
+  # defines the port the server is listening to. Default is 8080
+  port: 8080
