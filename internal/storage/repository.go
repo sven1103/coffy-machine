@@ -10,7 +10,7 @@ import (
 type EventRepository interface {
 	SaveAll([]EventEntry) error
 	LoadAll(aggregateID string) ([]EventEntry, error)
-	FetchAccountIDs() ([]EventEntry, error)
+	FetchByEventType(event string) ([]EventEntry, error)
 }
 
 type EventEntry struct {
@@ -43,13 +43,13 @@ func (r *eventRepositoryImpl) LoadAll(aggregateID string) ([]EventEntry, error) 
 	return users, nil
 }
 
-func (r *eventRepositoryImpl) FetchAccountIDs() ([]EventEntry, error) {
-	ids := make([]EventEntry, 0)
-	result := r.db.Where("event_type LIKE ?", "AccountCreated").Find(&ids)
+func (r *eventRepositoryImpl) FetchByEventType(t string) ([]EventEntry, error) {
+	events := make([]EventEntry, 0)
+	result := r.db.Where("event_type LIKE ?", t).Find(&events)
 	if result.Error != nil {
 		return nil, fmt.Errorf("error fetching accounts: %w", result.Error)
 	}
-	return ids, nil
+	return events, nil
 }
 
 func CreateEventRepository(storage string) (EventRepository, error) {

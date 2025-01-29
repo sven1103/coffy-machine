@@ -62,7 +62,7 @@ func (a *Accounting) Find(accountID string) (*Account, error) {
 }
 
 func (a *Accounting) ListAll() ([]string, error) {
-	query, err := a.repo.FetchAccountIDs()
+	query, err := a.repo.FetchByEventType("AccountCreated")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load accounts: %w", err)
 	}

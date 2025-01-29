@@ -2,6 +2,8 @@ package main
 
 import (
 	"coffy/internal/account"
+	"coffy/internal/api"
+	"coffy/internal/product"
 	"coffy/internal/storage"
 	"github.com/gin-gonic/gin"
 	"log"
@@ -15,15 +17,21 @@ func main() {
 		log.Fatal(err)
 	}
 	service := account.NewAccounting(&repo)
+	beverageService := product.NewService(&repo)
 
 	router := gin.Default()
 
 	setupRoutes(router, service)
 
+	router.GET("/beverages", api.GetBeverages(beverageService))
+
+	router.POST("/beverages", api.CreateBeverage(beverageService))
+
 	router.Run(":8088")
 }
 
 func setupRoutes(router *gin.Engine, service *account.Accounting) {
+
 	router.GET("/accounts", func(c *gin.Context) {
 		result, err := service.ListAll()
 		if err != nil {
