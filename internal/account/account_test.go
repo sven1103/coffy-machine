@@ -5,7 +5,7 @@ import "testing"
 func TestCoffyConsumed(t *testing.T) {
 	costs := 0.25
 	coffee := "coffee cream"
-	event := newCoffyConsumed("123", coffee, costs)
+	event := NewCoffyConsumed("123", coffee, costs)
 
 	if event.AggregateID() != "123" {
 		t.Errorf("Event returned ID should be '123', got '%s'", event.AggregateID())
@@ -21,7 +21,7 @@ func TestCoffyConsumed(t *testing.T) {
 func TestIncomingPayment(t *testing.T) {
 	amount := 5.00
 	reason := "debt balance"
-	event := newIncomingPayment("123", amount, reason)
+	event := NewIncomingPayment("123", amount, reason)
 
 	if event.AggregateID() != "123" {
 		t.Errorf("Event returned ID should be '123', got '%s'", event.AggregateID())

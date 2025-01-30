@@ -23,7 +23,13 @@ func (b *Beverage) Price() float64 {
 	return b.price
 }
 
+// ChangePrice updates the price of the current Beverage.
+//
+// Only values greater or equal zero are allowed.
 func (b *Beverage) ChangePrice(p float64, reason string) error {
+	if p <= 0 {
+		return errors.New("invalid price")
+	}
 	e := NewPriceUpdated(b.AggregateID, p, reason)
 	if err := b.Apply(*e); err != nil {
 		return errors.Join(

@@ -49,3 +49,18 @@ func TestPriceUpdate(t *testing.T) {
 		t.Errorf("Price() should have returned '%.2f'", newPrice)
 	}
 }
+
+func TestPriceUpdatePositiveOnly(t *testing.T) {
+	oldPrice := 0.25
+	newPrice := -0.2
+
+	bev, err := NewBeverage("Black Coffee", oldPrice)
+	if err != nil {
+		t.Errorf("NewBeverage() error = %v", err)
+		return
+	}
+	if err := bev.ChangePrice(newPrice, "Global warming!"); err == nil {
+		t.Errorf("ChangePrice() should have retured an error, since the new price was negative")
+		return
+	}
+}

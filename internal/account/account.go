@@ -16,7 +16,7 @@ type Account struct {
 }
 
 func NewAccount(owner string) (*Account, error) {
-	created := newAccountCreated(uuid.New().String(), time.Now(), owner)
+	created := NewAccountCreated(uuid.New().String(), time.Now(), owner)
 	a := Account{}
 	if err := a.Apply(*created); err != nil {
 		return nil, err
@@ -24,20 +24,24 @@ func NewAccount(owner string) (*Account, error) {
 	return &a, nil
 }
 
+// Apply takes an event.Event and applies it to the current account.
+//
+// The function is intended to be used only for object creation. For interactions
+// with the account, use any other public function (e.g. Consume or Pay).
 func (a *Account) Apply(e event.Event) error {
 	switch theEvent := e.(type) {
-	case coffyConsumed:
+	case CoffyConsumed:
 		return a.applyConsumed(theEvent)
-	case accountCreated:
+	case AccountCreated:
 		return a.createAccount(theEvent)
-	case incomingPayment:
+	case IncomingPayment:
 		return a.applyPayment(theEvent)
 	default:
 		return fmt.Errorf("unknown event: %v", e)
 	}
 }
 
-func (a *Account) applyConsumed(e coffyConsumed) error {
+func (a *Account) applyConsumed(e CoffyConsumed) error {
 	if e.AggregateID() != a.id {
 		return fmt.Errorf("event aggregate id does not match current aggregate")
 	}
@@ -46,27 +50,47 @@ func (a *Account) applyConsumed(e coffyConsumed) error {
 	return nil
 }
 
+// Consume charges the account with the price of the coffee consumed
+// and stores the type of coffee.
+//
+// The value for the price must be greater or equal zero.
 func (a *Account) Consume(price float64, coffeeType string) error {
 	if price < 0 {
 		return fmt.Errorf("price cannot be negative")
 	}
-	e := newCoffyConsumed(a.id, coffeeType, price)
+	e := NewCoffyConsumed(a.id, coffeeType, price)
 	if err := a.Apply(*e); err != nil {
 		return err
 	}
 	return nil
 }
 
+// Pay balances the account with a given amount and reason to the account.
+// The payment is a deposit to the account and the reason serves as semantic context of the payment.
+//
+// Only values greater or equal 0 are allowed. The value for reason can be left empty if not required.
 func (a *Account) Pay(amount float64, reason string) error {
 	if amount < 0 {
 		return fmt.Errorf("payment amount cannot be negative")
 	}
-	e := newIncomingPayment(a.id, amount, reason)
+	e := NewIncomingPayment(a.id, amount, reason)
 	if err := a.Apply(*e); err != nil {
 		log.Printf("Error: %v", err)
 		return fmt.Errorf("error paying %.2f to Account ID '%s'", amount, a.id)
 	}
 	return nil
+}
+
+// ConsumedTotal returns the total amount of coffee consumed.
+// Only events of type CoffyConsumed are considered.
+func (a *Account) ConsumedTotal() int {
+	consumed := 0
+	for _, e := range a.events {
+		if e.Type() == "CoffyConsumed" {
+			consumed += 1
+		}
+	}
+	return consumed
 }
 
 func (a *Account) ID() string {
@@ -85,7 +109,7 @@ func (a *Account) Events() []event.Event {
 	return a.events
 }
 
-func (a *Account) createAccount(e accountCreated) error {
+func (a *Account) createAccount(e AccountCreated) error {
 	if a.owner != "" {
 		return fmt.Errorf("Account already exists")
 	}
@@ -95,7 +119,7 @@ func (a *Account) createAccount(e accountCreated) error {
 	return nil
 }
 
-func (a *Account) applyPayment(e incomingPayment) error {
+func (a *Account) applyPayment(e IncomingPayment) error {
 	if a.id != e.AggregateID() {
 		return fmt.Errorf("event aggregate id does not match current aggregate")
 	}
@@ -104,43 +128,33 @@ func (a *Account) applyPayment(e incomingPayment) error {
 	return nil
 }
 
-func (a *Account) ConsumedTotal() int {
-	consumed := 0
-	for _, e := range a.events {
-		if e.Type() == "CoffyConsumed" {
-			consumed += 1
-		}
-	}
-	return consumed
-}
-
-type accountCreated struct {
+type AccountCreated struct {
 	AccountID  string    `json:"accountID"`
 	OccurredOn time.Time `json:"occurredOn"`
 	EventType  string    `json:"eventType"`
 	Owner      string    `json:"owner"`
 }
 
-func newAccountCreated(accountID string, occurredOn time.Time, owner string) *accountCreated {
-	return &accountCreated{AccountID: accountID, OccurredOn: occurredOn, EventType: "AccountCreated", Owner: owner}
+func NewAccountCreated(accountID string, occurredOn time.Time, owner string) *AccountCreated {
+	return &AccountCreated{AccountID: accountID, OccurredOn: occurredOn, EventType: "AccountCreated", Owner: owner}
 }
 
-func (e accountCreated) Type() string {
+func (e AccountCreated) Type() string {
 	return e.EventType
 }
 
-func (e accountCreated) Occurred() time.Time {
+func (e AccountCreated) Occurred() time.Time {
 	return e.OccurredOn
 }
 
-func (e accountCreated) AggregateID() string {
+func (e AccountCreated) AggregateID() string {
 	return e.AccountID
 }
 
-// The coffyConsumed event records a coffee consumption event. Next to the common properties of Event, it
+// The CoffyConsumed event records a coffee consumption event. Next to the common properties of Event, it
 // also records the coffee type (CoffyType) that has been consumed to increase the transparency and the
 // associated costs (Costs).
-type coffyConsumed struct {
+type CoffyConsumed struct {
 	AccountID  string    `json:"accountID"`
 	OccurredOn time.Time `json:"occurredOn"`
 	EventType  string    `json:"eventType"`
@@ -148,15 +162,15 @@ type coffyConsumed struct {
 	Costs      float64   `json:"costs"`
 }
 
-func newCoffyConsumed(accountID string, coffyType string, costs float64) *coffyConsumed {
-	return &coffyConsumed{accountID, time.Now(), "CoffyConsumed", coffyType, costs}
+func NewCoffyConsumed(accountID string, coffyType string, costs float64) *CoffyConsumed {
+	return &CoffyConsumed{accountID, time.Now(), "CoffyConsumed", coffyType, costs}
 }
 
-// The incomingPayment event records an effort to pay someone's outstanding coffy debts. Next to the common properties
+// The IncomingPayment event records an effort to pay someone's outstanding coffy debts. Next to the common properties
 // of Event, it also records a reason (Reason), e.g. one just paid to the bank of coffy, or purchased
 // some maintenance materials, like descaling agent etc. The amount (Amount) represents the amount of money that
 // has been used to pay to the Account.
-type incomingPayment struct {
+type IncomingPayment struct {
 	AccountID  string    `json:"accountID"`
 	OccurredOn time.Time `json:"occurredOn"`
 	EventType  string    `json:"eventType"`
@@ -164,30 +178,30 @@ type incomingPayment struct {
 	Reason     string    `json:"reason"`
 }
 
-func newIncomingPayment(accountID string, amount float64, reason string) *incomingPayment {
-	return &incomingPayment{accountID, time.Now(), "IncomingPayment", amount, reason}
+func NewIncomingPayment(accountID string, amount float64, reason string) *IncomingPayment {
+	return &IncomingPayment{accountID, time.Now(), "IncomingPayment", amount, reason}
 }
 
-func (e coffyConsumed) AggregateID() string {
+func (e CoffyConsumed) AggregateID() string {
 	return e.AccountID
 }
 
-func (e coffyConsumed) Occurred() time.Time {
+func (e CoffyConsumed) Occurred() time.Time {
 	return e.OccurredOn
 }
 
-func (e coffyConsumed) Type() string {
+func (e CoffyConsumed) Type() string {
 	return e.EventType
 }
 
-func (e incomingPayment) AggregateID() string {
+func (e IncomingPayment) AggregateID() string {
 	return e.AccountID
 }
 
-func (e incomingPayment) Occurred() time.Time {
+func (e IncomingPayment) Occurred() time.Time {
 	return e.OccurredOn
 }
 
-func (e incomingPayment) Type() string {
+func (e IncomingPayment) Type() string {
 	return e.EventType
 }

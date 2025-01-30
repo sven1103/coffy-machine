@@ -100,19 +100,19 @@ func convert(entry storage.EventEntry) (event.Event, error) {
 
 func toEventEntry(event event.Event) (storage.EventEntry, error) {
 	switch t := event.(type) {
-	case accountCreated:
+	case AccountCreated:
 		data, err := json.Marshal(t)
 		if err != nil {
 			return storage.EventEntry{}, err
 		}
 		return storage.EventEntry{AggregateID: t.AccountID, EventType: t.EventType, EventData: data}, nil
-	case incomingPayment:
+	case IncomingPayment:
 		data, err := json.Marshal(t)
 		if err != nil {
 			return storage.EventEntry{}, err
 		}
 		return storage.EventEntry{AggregateID: t.AccountID, EventType: t.EventType, EventData: data}, nil
-	case coffyConsumed:
+	case CoffyConsumed:
 		data, err := json.Marshal(t)
 		if err != nil {
 			return storage.EventEntry{}, err
@@ -124,7 +124,7 @@ func toEventEntry(event event.Event) (storage.EventEntry, error) {
 }
 
 func toCreate(entry storage.EventEntry) (event.Event, error) {
-	e := accountCreated{}
+	e := AccountCreated{}
 	if err := json.Unmarshal(entry.EventData, &e); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal data as AccountCreated: %w", err)
 	}
@@ -132,7 +132,7 @@ func toCreate(entry storage.EventEntry) (event.Event, error) {
 }
 
 func toPayment(entry storage.EventEntry) (event.Event, error) {
-	e := incomingPayment{}
+	e := IncomingPayment{}
 	if err := json.Unmarshal(entry.EventData, &e); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal event data as IncomingPayment: %w", err)
 	}
@@ -140,7 +140,7 @@ func toPayment(entry storage.EventEntry) (event.Event, error) {
 }
 
 func toConsume(entry storage.EventEntry) (event.Event, error) {
-	e := coffyConsumed{}
+	e := CoffyConsumed{}
 	if err := json.Unmarshal(entry.EventData, &e); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal event data as CoffyConsumed: %w", err)
 	}
