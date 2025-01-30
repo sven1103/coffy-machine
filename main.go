@@ -13,6 +13,7 @@ import (
 	"os"
 )
 
+// Holds the current version value of the application.
 var version string = "1.0.0"
 
 func main() {
