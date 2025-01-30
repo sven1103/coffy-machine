@@ -8,6 +8,8 @@ import (
 	"fmt"
 )
 
+var ErrorNotFound = errors.New("account not found")
+
 type Accounting struct {
 	repo storage.EventRepository
 }
@@ -43,6 +45,9 @@ func (a *Accounting) Find(accountID string) (*Account, error) {
 	query, err := a.repo.LoadAll(accountID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load account: %w", err)
+	}
+	if query == nil || len(query) == 0 {
+		return nil, ErrorNotFound
 	}
 	events := make([]event.Event, 0)
 	for _, entry := range query {

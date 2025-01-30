@@ -5,6 +5,7 @@ import (
 	"coffy/internal/api"
 	"coffy/internal/cmd"
 	"coffy/internal/coffy"
+	"coffy/internal/consume"
 	"coffy/internal/product"
 	"coffy/internal/storage"
 	"fmt"
@@ -40,18 +41,22 @@ func startCoffy(config *coffy.Config) {
 	// create app services first
 	accService := account.NewAccounting(&repo)
 	beverageService := product.NewService(&repo)
+	consumeService := consume.NewService(accService, beverageService)
 
 	router := gin.Default()
-
-	// beverages API
-	router.GET("/beverages", api.GetBeverages(beverageService))
-	router.POST("/beverages", api.CreateBeverage(beverageService))
 
 	// accounts API
 	const pathAccounts = "/accounts"
 	router.GET(pathAccounts, api.GetAccounts(accService))
 	router.GET(pathAccounts+"/:id", api.GetAccountById(accService))
 	router.POST(pathAccounts, api.CreateAccount(accService))
+
+	// beverages API
+	router.GET("/beverages", api.GetBeverages(beverageService))
+	router.POST("/beverages", api.CreateBeverage(beverageService))
+
+	// consume API
+	router.POST("/consume", api.Consume(consumeService))
 
 	// run the server
 	err = router.Run(fmt.Sprintf(":%d", config.Server.Port))

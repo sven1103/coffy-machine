@@ -65,6 +65,25 @@ func (a *Account) Consume(price float64, coffeeType string) error {
 	return nil
 }
 
+// ConsumeN charges the account with the price of multiple coffee (n) consumed and records
+// the type of coffee.
+//
+// Note: this function calls Consume n times, so every coffee will be a single recorded event.
+//
+// The value for the price must be greater or equal zero
+// and the number of coffee must be greater or equal zero.
+func (a *Account) ConsumeN(price float64, coffeeType string, n int) error {
+	if n < 0 {
+		return fmt.Errorf("n must be positive")
+	}
+	for range n {
+		if err := a.Consume(price, coffeeType); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Pay balances the account with a given amount and reason to the account.
 // The payment is a deposit to the account and the reason serves as semantic context of the payment.
 //

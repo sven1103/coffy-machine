@@ -33,7 +33,6 @@ func (s *Service) Find(beverageID string) (*Beverage, error) {
 	entries, err := s.repo.LoadAll(beverageID)
 	const errorMsg = "failed to load beverage '%s'"
 	if err != nil {
-		log.Println(err)
 		return nil, fmt.Errorf(errorMsg, beverageID)
 	}
 
