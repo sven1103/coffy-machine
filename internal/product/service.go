@@ -37,6 +37,11 @@ func (s *Service) Find(beverageID string) (*Beverage, error) {
 		return nil, fmt.Errorf(errorMsg, beverageID)
 	}
 
+	// No entries mean the beverage was not found, thus we can return an error here already
+	if len(entries) == 0 {
+		return nil, fmt.Errorf(errorMsg, beverageID)
+	}
+
 	events := make([]event.Event, len(entries))
 	for _, entry := range entries {
 		e, err := convert(entry)
