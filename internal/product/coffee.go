@@ -8,40 +8,58 @@ import (
 	"time"
 )
 
-type Beverage struct {
-	AggregateID  string
-	BeverageType string
-	price        float64
-	events       []event.Event
+type Coffee struct {
+	AggregateID string
+	Type        string
+	price       float64
+	events      []event.Event
 }
 
-func (b *Beverage) Events() []event.Event {
+func (b *Coffee) Events() []event.Event {
 	return b.events
 }
 
-func (b *Beverage) Price() float64 {
+func (b *Coffee) Price() float64 {
 	return b.price
 }
 
-// ChangePrice updates the price of the current Beverage.
+// ChangePrice updates the price of the current Coffee.
 //
 // Only values greater or equal zero are allowed.
-func (b *Beverage) ChangePrice(p float64, reason string) error {
+func (b *Coffee) ChangePrice(p float64, reason string) error {
 	if p <= 0 {
 		return errors.New("invalid price")
 	}
 	e := NewPriceUpdated(b.AggregateID, p, reason)
-	if err := b.Apply(*e); err != nil {
+	if err := b.apply(*e); err != nil {
 		return errors.Join(
 			fmt.Errorf("could not change price for %s [id: %s]",
-				b.BeverageType, b.AggregateID), err)
+				b.Type, b.AggregateID), err)
 	}
 	return nil
 }
 
-func (b *Beverage) Apply(e event.Event) error {
+// Clear empties the current event cache of the coffee and removes all previously appended events.
+func (b *Coffee) Clear() {
+	b.events = []event.Event{}
+}
+
+// Load sets the state of the current coffee by applying all events iteratively.
+//
+// After all events have been applied to the account, the event cache is emptied.
+func (b *Coffee) Load(events []event.Event) error {
+	for _, e := range events {
+		if err := b.apply(e); err != nil {
+			return fmt.Errorf("could not apply event: %v", err)
+		}
+	}
+	b.Clear()
+	return nil
+}
+
+func (b *Coffee) apply(e event.Event) error {
 	switch theEvent := e.(type) {
-	case BeverageCreated:
+	case CoffeeCreated:
 		b.applyCreated(theEvent)
 	case PriceUpdated:
 		if err := b.applyNewPrice(theEvent); err != nil {
@@ -53,7 +71,7 @@ func (b *Beverage) Apply(e event.Event) error {
 	return nil
 }
 
-func (b *Beverage) applyNewPrice(e PriceUpdated) error {
+func (b *Coffee) applyNewPrice(e PriceUpdated) error {
 	if e.AggregateID() != b.AggregateID {
 		return fmt.Errorf("beverage ids do not match: expected %s, actual %s", b.AggregateID, e.AggregateID())
 	}
@@ -62,48 +80,48 @@ func (b *Beverage) applyNewPrice(e PriceUpdated) error {
 	return nil
 }
 
-func (b *Beverage) applyCreated(e BeverageCreated) {
+func (b *Coffee) applyCreated(e CoffeeCreated) {
 	b.AggregateID = e.ID
-	b.BeverageType = e.BeverageType
+	b.Type = e.BeverageType
 	b.price = e.Price
 	b.events = append(b.events, e)
 }
 
-type BeverageCreated struct {
+type CoffeeCreated struct {
 	ID           string
 	BeverageType string
 	Price        float64
 	OccurredOn   time.Time
 }
 
-func NewBeverage(beverageType string, price float64) (*Beverage, error) {
-	if beverageType == "" {
+func NewCoffee(coffeeType string, price float64) (*Coffee, error) {
+	if coffeeType == "" {
 		return nil, errors.New("beverage type cannot be empty")
 	}
 	if price <= 0 {
 		return nil, errors.New("price must be greater than zero")
 	}
-	beverage := &Beverage{}
-	created := NewBeverageCreated(uuid.NewString(), beverageType, price)
-	if err := beverage.Apply(*created); err != nil {
+	beverage := &Coffee{}
+	created := NewCoffeeCreated(uuid.NewString(), coffeeType, price)
+	if err := beverage.apply(*created); err != nil {
 		return nil, err
 	}
 	return beverage, nil
 }
 
-func NewBeverageCreated(id string, beverageType string, price float64) *BeverageCreated {
-	return &BeverageCreated{id, beverageType, price, time.Now()}
+func NewCoffeeCreated(id string, coffeeType string, price float64) *CoffeeCreated {
+	return &CoffeeCreated{id, coffeeType, price, time.Now()}
 }
 
-func (b BeverageCreated) AggregateID() string {
+func (b CoffeeCreated) AggregateID() string {
 	return b.ID
 }
 
-func (b BeverageCreated) Type() string {
-	return "BeverageCreated"
+func (b CoffeeCreated) Type() string {
+	return "CoffeeCreated"
 }
 
-func (b BeverageCreated) Occurred() time.Time {
+func (b CoffeeCreated) Occurred() time.Time {
 	return b.OccurredOn
 }
 

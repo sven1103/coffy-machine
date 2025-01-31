@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"time"
 )
 
 type EventRepository interface {
@@ -17,6 +18,7 @@ type EventEntry struct {
 	ID          int
 	AggregateID string
 	EventType   string
+	Date        time.Time
 	EventData   []byte
 }
 

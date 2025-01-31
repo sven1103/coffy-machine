@@ -18,17 +18,17 @@ type Account struct {
 func NewAccount(owner string) (*Account, error) {
 	created := NewAccountCreated(uuid.New().String(), time.Now(), owner)
 	a := Account{}
-	if err := a.Apply(*created); err != nil {
+	if err := a.apply(*created); err != nil {
 		return nil, err
 	}
 	return &a, nil
 }
 
-// Apply takes an event.Event and applies it to the current account.
+// apply takes an event.Event and applies it to the current account.
 //
 // The function is intended to be used only for object creation. For interactions
 // with the account, use any other public function (e.g. Consume or Pay).
-func (a *Account) Apply(e event.Event) error {
+func (a *Account) apply(e event.Event) error {
 	switch theEvent := e.(type) {
 	case CoffyConsumed:
 		return a.applyConsumed(theEvent)
@@ -39,6 +39,24 @@ func (a *Account) Apply(e event.Event) error {
 	default:
 		return fmt.Errorf("unknown event: %v", e)
 	}
+}
+
+// Load sets the state of the current account by applying all events iteratively.
+//
+// After all events have been applied to the account, the event cache is emptied.
+func (a *Account) Load(events []event.Event) error {
+	for _, e := range events {
+		if err := a.apply(e); err != nil {
+			return err
+		}
+	}
+	a.Clear()
+	return nil
+}
+
+// Clear empties the current event cache of the account and removes all previously appended events.
+func (a *Account) Clear() {
+	a.events = []event.Event{}
 }
 
 func (a *Account) applyConsumed(e CoffyConsumed) error {
@@ -59,7 +77,7 @@ func (a *Account) Consume(price float64, coffeeType string) error {
 		return fmt.Errorf("price cannot be negative")
 	}
 	e := NewCoffyConsumed(a.id, coffeeType, price)
-	if err := a.Apply(*e); err != nil {
+	if err := a.apply(*e); err != nil {
 		return err
 	}
 	return nil
@@ -93,7 +111,7 @@ func (a *Account) Pay(amount float64, reason string) error {
 		return fmt.Errorf("payment amount cannot be negative")
 	}
 	e := NewIncomingPayment(a.id, amount, reason)
-	if err := a.Apply(*e); err != nil {
+	if err := a.apply(*e); err != nil {
 		log.Printf("Error: %v", err)
 		return fmt.Errorf("error paying %.2f to Account ID '%s'", amount, a.id)
 	}

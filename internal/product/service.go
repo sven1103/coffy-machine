@@ -17,45 +17,49 @@ func NewService(repo *storage.EventRepository) *Service {
 	return &Service{*repo}
 }
 
-func (s *Service) ListAll() ([]string, error) {
-	query, err := s.repo.FetchByEventType("BeverageCreated")
+func (s *Service) ListAll() ([]Coffee, error) {
+	query, err := s.repo.FetchByEventType("CoffeeCreated")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load beverages: %w", err)
 	}
-	ids := make([]string, 0)
+	bev := make([]Coffee, 0)
 	for _, entry := range query {
-		ids = append(ids, entry.AggregateID)
+		r, err := s.Find(entry.AggregateID)
+		if err != nil {
+			return nil, errors.Join(errors.New("failed to load beverage"), err)
+		}
+		bev = append(bev, *r)
 	}
-	return ids, nil
+
+	return bev, nil
 }
 
-func (s *Service) Find(beverageID string) (*Beverage, error) {
-	entries, err := s.repo.LoadAll(beverageID)
-	const errorMsg = "failed to load beverage '%s'"
+func (s *Service) Find(coffeeId string) (*Coffee, error) {
+	entries, err := s.repo.LoadAll(coffeeId)
+	const errorMsg = "failed to load coffee '%s'"
 	if err != nil {
-		return nil, fmt.Errorf(errorMsg, beverageID)
+		return nil, fmt.Errorf(errorMsg, coffeeId)
 	}
 
 	// No entries mean the beverage was not found, thus we can return an error here already
 	if len(entries) == 0 {
-		return nil, fmt.Errorf(errorMsg, beverageID)
+		return nil, fmt.Errorf(errorMsg, coffeeId)
 	}
 
-	events := make([]event.Event, len(entries))
+	events := make([]event.Event, 0)
 	for _, entry := range entries {
 		e, err := convert(entry)
 		if err != nil {
-			log.Println(err)
-			return nil, fmt.Errorf(errorMsg, beverageID)
+			return nil, fmt.Errorf(errorMsg, coffeeId)
 		}
 		events = append(events, e)
 	}
 
-	b := &Beverage{}
+	b := &Coffee{}
 	for _, e := range events {
-		if err := b.Apply(e); err != nil {
+		if err := b.apply(e); err != nil {
 			log.Println(err)
-			return nil, fmt.Errorf(errorMsg, beverageID)
+			return nil, fmt.Errorf(errorMsg, coffeeId)
 		}
 	}
 	return b, nil
@@ -63,7 +67,7 @@ func (s *Service) Find(beverageID string) (*Beverage, error) {
 
 func convert(entry storage.EventEntry) (event.Event, error) {
 	switch entry.EventType {
-	case "BeverageCreated":
+	case "CoffeeCreated":
 		evnt, err := toBeverageCreated(entry)
 		if err != nil {
 			return nil, err
@@ -80,8 +84,8 @@ func convert(entry storage.EventEntry) (event.Event, error) {
 	}
 }
 
-func (s *Service) Create(name string, price float64) (*Beverage, error) {
-	b, err := NewBeverage(name, price)
+func (s *Service) Create(name string, price float64) (*Coffee, error) {
+	b, err := NewCoffee(name, price)
 	if err != nil {
 		return nil, err
 	}
@@ -103,27 +107,27 @@ func (s *Service) Create(name string, price float64) (*Beverage, error) {
 
 func toEventEntry(event event.Event) (storage.EventEntry, error) {
 	switch t := event.(type) {
-	case BeverageCreated:
+	case CoffeeCreated:
 		data, err := json.Marshal(t)
 		if err != nil {
 			return storage.EventEntry{}, err
 		}
-		return storage.EventEntry{AggregateID: t.AggregateID(), EventType: "BeverageCreated", EventData: data}, nil
+		return storage.EventEntry{AggregateID: t.AggregateID(), Date: t.OccurredOn, EventType: "CoffeeCreated", EventData: data}, nil
 	case PriceUpdated:
 		data, err := json.Marshal(t)
 		if err != nil {
 			return storage.EventEntry{}, err
 		}
-		return storage.EventEntry{AggregateID: t.AggregateID(), EventType: "PriceUpdated", EventData: data}, nil
+		return storage.EventEntry{AggregateID: t.AggregateID(), Date: t.OccurredOn, EventType: "PriceUpdated", EventData: data}, nil
 	default:
 		return storage.EventEntry{}, errors.New("unknown event")
 	}
 }
 
 func toBeverageCreated(entry storage.EventEntry) (event.Event, error) {
-	e := BeverageCreated{}
+	e := CoffeeCreated{}
 	if err := json.Unmarshal(entry.EventData, &e); err != nil {
-		return nil, fmt.Errorf("could not unmarshal event data as BeverageCreated: %w", err)
+		return nil, fmt.Errorf("could not unmarshal event data as CoffeeCreated: %w", err)
 	}
 	return e, nil
 }

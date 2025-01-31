@@ -29,6 +29,27 @@ func (a *Accounting) Create(owner string) (*Account, error) {
 	return account, nil
 }
 
+func (a *Accounting) Consume(accountId string, costs float64, coffee string, n int) error {
+	account, err := a.Find(accountId)
+	if err != nil {
+		return fmt.Errorf("error finding account: %w", err)
+	}
+	account.Clear()
+	for range n {
+		if err := account.Consume(costs, coffee); err != nil {
+			return fmt.Errorf("error consuming costs: %w", err)
+		}
+	}
+	entries, err := a.convertAll(account.Events())
+	if err != nil {
+		return fmt.Errorf("error converting events: %w", err)
+	}
+	if err = a.repo.SaveAll(entries); err != nil {
+		return fmt.Errorf("error saving events: %w", err)
+	}
+	return nil
+}
+
 func (a *Accounting) convertAll(events []event.Event) ([]storage.EventEntry, error) {
 	entries := make([]storage.EventEntry, 0)
 	for _, e := range events {
@@ -59,23 +80,27 @@ func (a *Accounting) Find(accountID string) (*Account, error) {
 	}
 	acc := &Account{}
 	for _, e := range events {
-		if err := acc.Apply(e); err != nil {
+		if err := acc.apply(e); err != nil {
 			return nil, fmt.Errorf("failed to apply event: %w", err)
 		}
 	}
 	return acc, nil
 }
 
-func (a *Accounting) ListAll() ([]string, error) {
+func (a *Accounting) ListAll() ([]Account, error) {
 	query, err := a.repo.FetchByEventType("AccountCreated")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load accounts: %w", err)
 	}
-	ids := make([]string, 0)
-	for _, entry := range query {
-		ids = append(ids, entry.AggregateID)
+	accounts := make([]Account, 0)
+	for _, e := range query {
+		acc, err := a.Find(e.AggregateID)
+		if err != nil {
+			return nil, errors.Join(errors.New("failed to load account"), err)
+		}
+		accounts = append(accounts, *acc)
 	}
-	return ids, nil
+	return accounts, nil
 }
 
 func convert(entry storage.EventEntry) (event.Event, error) {
@@ -110,19 +135,19 @@ func toEventEntry(event event.Event) (storage.EventEntry, error) {
 		if err != nil {
 			return storage.EventEntry{}, err
 		}
-		return storage.EventEntry{AggregateID: t.AccountID, EventType: t.EventType, EventData: data}, nil
+		return storage.EventEntry{AggregateID: t.AccountID, Date: t.OccurredOn, EventType: t.EventType, EventData: data}, nil
 	case IncomingPayment:
 		data, err := json.Marshal(t)
 		if err != nil {
 			return storage.EventEntry{}, err
 		}
-		return storage.EventEntry{AggregateID: t.AccountID, EventType: t.EventType, EventData: data}, nil
+		return storage.EventEntry{AggregateID: t.AccountID, Date: t.OccurredOn, EventType: t.EventType, EventData: data}, nil
 	case CoffyConsumed:
 		data, err := json.Marshal(t)
 		if err != nil {
 			return storage.EventEntry{}, err
 		}
-		return storage.EventEntry{AggregateID: t.AccountID, EventType: t.EventType, EventData: data}, nil
+		return storage.EventEntry{AggregateID: t.AccountID, Date: t.OccurredOn, EventType: t.EventType, EventData: data}, nil
 	default:
 		return storage.EventEntry{}, errors.New("unknown event type")
 	}

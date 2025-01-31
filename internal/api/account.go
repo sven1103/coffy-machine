@@ -2,32 +2,65 @@ package api
 
 import (
 	"coffy/internal/account"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
 	"strings"
 )
 
+// GetAccounts returns all available account IDs.
+//
+//	@Summary		requests existing accounts
+//	@Schemes		http
+//	@ID				get-accounts
+//	@Description	Request a list of all accounts.
+//	@Tags			accounts
+//	@Produce		json
+//	@Success		200	{array}	AccountAlias
+//	@Router			/accounts [get]
 func GetAccounts(service *account.Accounting) func(*gin.Context) {
 	if service == nil {
 		return func(c *gin.Context) {
-			c.JSON(http.StatusServiceUnavailable, gin.H{})
+			log.Println(errors.New("service is nil"))
+			c.JSON(http.StatusInternalServerError, gin.H{})
 		}
 	}
 	return func(c *gin.Context) {
-		ids, err := service.ListAll()
+		accounts, err := service.ListAll()
 		if err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{})
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
 		}
-
-		c.JSON(http.StatusOK, ids)
+		alias := make([]AccountAlias, 0)
+		for _, a := range accounts {
+			entry, err := convertAccount(&a)
+			if err != nil {
+				log.Println(err)
+				c.JSON(http.StatusInternalServerError, gin.H{})
+			}
+			alias = append(alias, entry)
+		}
+		c.JSON(http.StatusOK, alias)
 	}
 }
 
+// GetAccountById returns the account associated with the provided ID.
+//
+//	@Summary		access account info by ID
+//	@Schemes		http
+//	@Description	Request account by ID.
+//	@ID				request-account-by-id
+//	@Tags			accounts
+//	@Param			id	path	string	true	"account ID"
+//	@Produce		json
+//	@Success		200	{object}	AccountAlias
+//	@Router			/accounts/{id} [get]
 func GetAccountById(service *account.Accounting) func(*gin.Context) {
 	if service == nil {
 		return func(c *gin.Context) {
+			log.Println(errors.New("service is nil"))
 			c.JSON(http.StatusServiceUnavailable, gin.H{})
 		}
 	}
@@ -53,6 +86,17 @@ func GetAccountById(service *account.Accounting) func(*gin.Context) {
 	}
 }
 
+// CreateAccount creates a new account with a unique ID.
+//
+//	@Summary		create an account
+//	@Schemes		http
+//	@Description	Creates a new account in coffy.
+//	@ID				create-new-account
+//	@Tags			accounts
+//	@Param			id	body	AccountCreationRequest	true	"account creation request"
+//	@Produce		json
+//	@Success		200	{object}	AccountAlias
+//	@Router			/accounts [post]
 func CreateAccount(service *account.Accounting) func(*gin.Context) {
 	if service == nil {
 		return func(c *gin.Context) {
@@ -103,7 +147,11 @@ type AccountCreationRequest struct {
 }
 
 func convertAccount(a *account.Account) (AccountAlias, error) {
-	return AccountAlias{ID: a.ID(), Owner: a.Owner(), Balance: a.Balance(), ConsumedTotal: a.ConsumedTotal()}, nil
+	return AccountAlias{
+		ID:            a.ID(),
+		Owner:         a.Owner(),
+		Balance:       a.Balance(),
+		ConsumedTotal: a.ConsumedTotal()}, nil
 }
 
 type AccountCreatedResponse struct {

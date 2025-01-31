@@ -16,11 +16,11 @@ type Service struct {
 }
 
 type Receipt struct {
-	recipient string
-	submitter string
-	amount    float64
-	purpose   string
-	date      time.Time
+	Recipient string    `json:"recipient"`
+	Submitter string    `json:"submitter"`
+	Amount    float64   `json:"amount"`
+	Purpose   string    `json:"purpose"`
+	Date      time.Time `json:"date"`
 }
 
 func NewService(accounting *account.Accounting, product *product.Service) *Service {
@@ -31,27 +31,24 @@ func (s *Service) Consume(accountID string, productID string, n int) (*Receipt, 
 	// first fetch the account
 	a, err := s.accounting.Find(accountID)
 	if err != nil {
-		return nil, errors.Join(errors.New("failed to lookup account"), err)
+		return nil, errors.Join(ErrorAccountNotFound, err)
 	}
 	p, err := s.product.Find(productID)
 	if err != nil {
-		return nil, errors.Join(errors.New("failed to lookup product"), err)
+		return nil, errors.Join(ErrorProductNotFound, err)
 	}
 
-	err = a.ConsumeN(p.Price(), p.BeverageType, n)
-	if err != nil {
-		return nil, errors.Join(errors.New("failed to consume product"), err)
-	}
-
-	err = a.Consume(p.Price(), p.BeverageType)
-	if err != nil {
+	if err = s.accounting.Consume(accountID, p.Price(), p.Type, n); err != nil {
 		return nil, errors.Join(errors.New("failed to consume product"), err)
 	}
 
 	return &Receipt{
-		recipient: recipient,
-		submitter: a.Owner(),
-		amount:    float64(n) * p.Price(),
-		purpose:   fmt.Sprintf("consumption of '%s'", p.BeverageType),
-		date:      time.Now()}, nil
+		Recipient: recipient,
+		Submitter: a.Owner(),
+		Amount:    float64(n) * p.Price(),
+		Purpose:   fmt.Sprintf("consumption of '%s'", p.Type),
+		Date:      time.Now()}, nil
 }
+
+var ErrorProductNotFound = errors.New("product not found")
+var ErrorAccountNotFound = errors.New("account not found")

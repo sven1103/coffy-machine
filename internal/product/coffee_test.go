@@ -2,18 +2,18 @@ package product
 
 import "testing"
 
-func TestNewBeverage(t *testing.T) {
-	b, err := NewBeverage("Black Coffee", 0.25)
+func TestNewCoffee(t *testing.T) {
+	b, err := NewCoffee("Black Coffee", 0.25)
 	if err != nil {
-		t.Errorf("NewBeverage() error = %v", err)
+		t.Errorf("NewCoffee() error = %v", err)
 		return
 	}
 	if b == nil {
-		t.Errorf("NewBeverage() returned nil")
+		t.Errorf("NewCoffee() returned nil")
 		return
 	}
-	if b.BeverageType != "Black Coffee" {
-		t.Errorf("BeverageType() should have returned Black Coffee")
+	if b.Type != "Black Coffee" {
+		t.Errorf("Type() should have returned Black Coffee")
 		return
 	}
 	if b.Price() != 0.25 {
@@ -25,10 +25,10 @@ func TestNewBeverage(t *testing.T) {
 		return
 	}
 	switch eventType := b.Events()[0].(type) {
-	case BeverageCreated:
+	case CoffeeCreated:
 		return
 	default:
-		t.Errorf("Events() should have returned a BeverageCreated, but returned %v", eventType)
+		t.Errorf("Events() should have returned a CoffeeCreated, but returned %v", eventType)
 	}
 }
 
@@ -36,9 +36,9 @@ func TestPriceUpdate(t *testing.T) {
 	oldPrice := 0.25
 	newPrice := 0.40
 
-	bev, err := NewBeverage("Black Coffee", oldPrice)
+	bev, err := NewCoffee("Black Coffee", oldPrice)
 	if err != nil {
-		t.Errorf("NewBeverage() error = %v", err)
+		t.Errorf("NewCoffee() error = %v", err)
 		return
 	}
 	if err := bev.ChangePrice(newPrice, "Global warming!"); err != nil {
@@ -54,9 +54,9 @@ func TestPriceUpdatePositiveOnly(t *testing.T) {
 	oldPrice := 0.25
 	newPrice := -0.2
 
-	bev, err := NewBeverage("Black Coffee", oldPrice)
+	bev, err := NewCoffee("Black Coffee", oldPrice)
 	if err != nil {
-		t.Errorf("NewBeverage() error = %v", err)
+		t.Errorf("NewCoffee() error = %v", err)
 		return
 	}
 	if err := bev.ChangePrice(newPrice, "Global warming!"); err == nil {

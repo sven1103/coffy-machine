@@ -1,6 +1,7 @@
 package main
 
 import (
+	"coffy/docs"
 	"coffy/internal/account"
 	"coffy/internal/api"
 	"coffy/internal/cmd"
@@ -10,6 +11,8 @@ import (
 	"coffy/internal/storage"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"log"
 	"os"
 )
@@ -17,6 +20,11 @@ import (
 // Holds the current version value of the application.
 var version string = "1.0.0"
 
+// @title			coffy-server API
+// @version		1.0
+// @description	This is a description of the coffy-server API capabilities.
+// @host			localhost:8080
+// @BasePath		/api/v1
 func main() {
 	logStartup()
 	defer func() {
@@ -31,6 +39,7 @@ func main() {
 
 func startCoffy(config *coffy.Config) {
 	log.Println("Received app configuration")
+	docs.SwaggerInfo.BasePath = "/api/v1"
 
 	// init the event repo
 	repo, err := storage.CreateEventRepository("test.db")
@@ -44,19 +53,23 @@ func startCoffy(config *coffy.Config) {
 	consumeService := consume.NewService(accService, beverageService)
 
 	router := gin.Default()
+	v1 := router.Group("/api/v1")
+	{
+		// accounts API
+		const pathAccounts = "/accounts"
+		v1.GET(pathAccounts, api.GetAccounts(accService))
+		v1.GET(pathAccounts+"/:id", api.GetAccountById(accService))
+		v1.POST(pathAccounts, api.CreateAccount(accService))
 
-	// accounts API
-	const pathAccounts = "/accounts"
-	router.GET(pathAccounts, api.GetAccounts(accService))
-	router.GET(pathAccounts+"/:id", api.GetAccountById(accService))
-	router.POST(pathAccounts, api.CreateAccount(accService))
+		// beverages API
+		v1.GET("/coffees", api.GetCoffees(beverageService))
+		v1.POST("/coffees", api.CreateBeverage(beverageService))
 
-	// beverages API
-	router.GET("/beverages", api.GetBeverages(beverageService))
-	router.POST("/beverages", api.CreateBeverage(beverageService))
+		// consume API
+		v1.POST("/consume", api.Consume(consumeService))
+	}
 
-	// consume API
-	router.POST("/consume", api.Consume(consumeService))
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// run the server
 	err = router.Run(fmt.Sprintf(":%d", config.Server.Port))
