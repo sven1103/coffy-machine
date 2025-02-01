@@ -1,4 +1,4 @@
-<img alt="coffy_logo_dark_bg.svg" src="coffy_logo_dark_bg.svg" width="10%" />
+<img alt="coffy_logo_dark_bg.svg" src="coffy_logo_dark_bg.svg" width="20%" />
 
 # Coffy Machine
 
