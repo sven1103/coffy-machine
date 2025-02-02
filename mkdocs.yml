@@ -1,0 +1,7 @@
+site_name: Coffy Machine
+site_url: https://github.com/sven1103/coffy-machine
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: brown
