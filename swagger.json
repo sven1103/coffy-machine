@@ -1,0 +1,273 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is a description of the coffy-server API capabilities.",
+        "title": "coffy-server API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {
+        "/accounts": {
+            "get": {
+                "description": "Request a list of all accounts.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "accounts"
+                ],
+                "summary": "requests existing accounts",
+                "operationId": "get-accounts",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.AccountAlias"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates a new account in coffy.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "accounts"
+                ],
+                "summary": "create an account",
+                "operationId": "create-new-account",
+                "parameters": [
+                    {
+                        "description": "account creation request",
+                        "name": "id",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.AccountCreationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.AccountAlias"
+                        }
+                    }
+                }
+            }
+        },
+        "/accounts/{id}": {
+            "get": {
+                "description": "Request account by ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "accounts"
+                ],
+                "summary": "access account info by ID",
+                "operationId": "request-account-by-id",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "account ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.AccountAlias"
+                        }
+                    }
+                }
+            }
+        },
+        "/coffees": {
+            "get": {
+                "description": "Lists all available coffees in coffy.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "coffees"
+                ],
+                "summary": "get all coffees",
+                "operationId": "get-all-coffees",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.CoffeeInfo"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates a new coffee in coffy.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "coffees"
+                ],
+                "summary": "create new coffee",
+                "operationId": "create-new-coffee",
+                "parameters": [
+                    {
+                        "description": "coffee creation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateBeverageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CoffeeInfo"
+                        }
+                    }
+                }
+            }
+        },
+        "/consume": {
+            "post": {
+                "description": "Informs coffy about a user consumed a coffee.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "consume"
+                ],
+                "summary": "consume a coffee",
+                "operationId": "consume-a-coffee",
+                "parameters": [
+                    {
+                        "description": "consume coffee request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ConsumeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/consume.Receipt"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "api.AccountAlias": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "number"
+                },
+                "consumedTotal": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "owner": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.AccountCreationRequest": {
+            "type": "object",
+            "properties": {
+                "owner": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.CoffeeInfo": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                }
+            }
+        },
+        "api.ConsumeRequest": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "string"
+                },
+                "product_id": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.CreateBeverageRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "price"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                }
+            }
+        },
+        "consume.Receipt": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "purpose": {
+                    "type": "string"
+                },
+                "recipient": {
+                    "type": "string"
+                },
+                "submitter": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,180 @@
+basePath: /api/v1
+definitions:
+  api.AccountAlias:
+    properties:
+      balance:
+        type: number
+      consumedTotal:
+        type: integer
+      id:
+        type: string
+      owner:
+        type: string
+    type: object
+  api.AccountCreationRequest:
+    properties:
+      owner:
+        type: string
+    type: object
+  api.CoffeeInfo:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      price:
+        type: number
+    type: object
+  api.ConsumeRequest:
+    properties:
+      account_id:
+        type: string
+      product_id:
+        type: string
+      quantity:
+        type: integer
+    type: object
+  api.CreateBeverageRequest:
+    properties:
+      name:
+        type: string
+      price:
+        type: number
+    required:
+    - name
+    - price
+    type: object
+  consume.Receipt:
+    properties:
+      amount:
+        type: number
+      date:
+        type: string
+      purpose:
+        type: string
+      recipient:
+        type: string
+      submitter:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: This is a description of the coffy-server API capabilities.
+  title: coffy-server API
+  version: "1.0"
+paths:
+  /accounts:
+    get:
+      description: Request a list of all accounts.
+      operationId: get-accounts
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.AccountAlias'
+            type: array
+      summary: requests existing accounts
+      tags:
+      - accounts
+    post:
+      description: Creates a new account in coffy.
+      operationId: create-new-account
+      parameters:
+      - description: account creation request
+        in: body
+        name: id
+        required: true
+        schema:
+          $ref: '#/definitions/api.AccountCreationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.AccountAlias'
+      summary: create an account
+      tags:
+      - accounts
+  /accounts/{id}:
+    get:
+      description: Request account by ID.
+      operationId: request-account-by-id
+      parameters:
+      - description: account ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.AccountAlias'
+      summary: access account info by ID
+      tags:
+      - accounts
+  /coffees:
+    get:
+      description: Lists all available coffees in coffy.
+      operationId: get-all-coffees
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.CoffeeInfo'
+            type: array
+      summary: get all coffees
+      tags:
+      - coffees
+    post:
+      description: Creates a new coffee in coffy.
+      operationId: create-new-coffee
+      parameters:
+      - description: coffee creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateBeverageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CoffeeInfo'
+      summary: create new coffee
+      tags:
+      - coffees
+  /consume:
+    post:
+      description: Informs coffy about a user consumed a coffee.
+      operationId: consume-a-coffee
+      parameters:
+      - description: consume coffee request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.ConsumeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/consume.Receipt'
+      summary: consume a coffee
+      tags:
+      - consume
+swagger: "2.0"
