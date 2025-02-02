@@ -1,3 +1,8 @@
 server:
   # defines the port the server is listening to. Default is 8080
   port: 8080
+database:
+  # defines the path where the database file is created and used
+  # to store the persistent state of the service
+  path: ./coffy_machine.db
+

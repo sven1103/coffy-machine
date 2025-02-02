@@ -34,7 +34,25 @@ func validateConfig(cfg *Config) error {
 	if cfg == nil {
 		return errors.New("config is nil")
 	}
-	return validateServer(cfg.Server)
+
+	if err := validateServer(cfg.Server); err != nil {
+		return err
+	}
+
+	if err := validateDatabase(cfg.Database); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateDatabase(c *DbCfg) error {
+	if c == nil {
+		return MissingPropertyError{"database", "missing property"}
+	}
+	if c.Path == "" {
+		return MissingPropertyError{"path", "missing property"}
+	}
+	return nil
 }
 
 func validateServer(s *ServerCfg) error {
@@ -48,11 +66,16 @@ func validateServer(s *ServerCfg) error {
 }
 
 type Config struct {
-	Server *ServerCfg `yaml:"server"`
+	Server   *ServerCfg `yaml:"server"`
+	Database *DbCfg     `yaml:"database"`
 }
 
 type ServerCfg struct {
 	Port int `yaml:"port"`
+}
+
+type DbCfg struct {
+	Path string `yaml:"path"`
 }
 
 type MissingPropertyError struct {
@@ -61,5 +84,5 @@ type MissingPropertyError struct {
 }
 
 func (e MissingPropertyError) Error() string {
-	return fmt.Sprintf("Property: '%s'. %s", e.Property, e.Message)
+	return fmt.Sprintf("%s: '%s'", e.Message, e.Property)
 }
