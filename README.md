@@ -1,11 +1,12 @@
 <img alt="coffy_logo_dark_bg.svg" src="assets/logo/coffy_logo_dark_bg.svg" width="20%" />
 
+_Replaces your pen and paper coffee list. Enjoy your coffee!_
+
 # Coffy Machine
 
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/sven1103/coffy-machine)
 
-
-Web service component of Coffy with an RESTful API written in [Go](https://github.com/golang/go).
+Web service component of Coffy <img alt="Coffy icon" src="assets/logo/coffy_logo_icon.svg" height="16px"/> with an RESTful API written in [Go](https://github.com/golang/go).
 
 *Still in development, frequent changes to the API are to be expected.*
 
