@@ -1,1 +1,5 @@
 /site/**
+
+/docs/*.go
+
+/docs/swagger*

@@ -26,6 +26,27 @@ go version go1.23.4 darwin/arm64
 
 If not, visit the [Go website](https://go.dev/) and do so.
 
+Coffy Machine uses swag for automated Swagger 2.0 documentation. So please install ``swag`` first:
+
+```bash
+go install github.com/swaggo/swag/cmd/swag@latest
+```
+
+and then run in the projects root directory:
+
+```bash
+swag init .
+```
+
+This should create a ``./docs`` folder with this content:
+
+```bash
+.docs/
+   docs.go
+   swagger.json
+   swagger.yaml
+```
+
 Then compile the source code with:
 
 ```bash
