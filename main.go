@@ -42,10 +42,11 @@ func startCoffy(config *coffy.Config) {
 	docs.SwaggerInfo.BasePath = "/api/v1"
 
 	// init the event repo
-	repo, err := storage.CreateEventRepository("test.db")
+	repo, err := storage.CreateEventRepository(config.Database.Path)
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("Database in use:", config.Database.Path)
 
 	// create app services first
 	accService := account.NewAccounting(&repo)
@@ -76,6 +77,7 @@ func startCoffy(config *coffy.Config) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("Coffy Machine is running and listening on port", config.Server.Port)
 }
 
 func logStartup() {

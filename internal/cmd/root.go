@@ -19,7 +19,7 @@ coffy-server is the heart of the coffy-suite and comes with a HTTP REST interfac
 }
 
 func init() {
-	serverCmd.Flags().StringVarP(&cfgPath, "config", "c", "./coffy.yaml", "path to coffy-server.yaml")
+	serverCmd.Flags().StringVarP(&cfgPath, "config", "c", "./coffy.yaml", "path to coffy_machine.yaml")
 }
 
 func run(cmd *cobra.Command, args []string) {
