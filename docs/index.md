@@ -45,4 +45,6 @@ You can just try to run the web service with the example configuration ``example
 ```
 ./coffy-machine -c example_config.yaml
 ```
+That's it &#x1F680;
+
 
