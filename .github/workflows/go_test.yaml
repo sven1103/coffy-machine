@@ -20,10 +20,16 @@ jobs:
       - name: Set Up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.23" # Change to your Go version
+          go-version: "1.23"
 
       - name: Install Dependencies
         run: go mod tidy
+
+      - name: Install Swag
+        run: go install github.com/swaggo/swag/cmd/swag@latest
+
+      - name: Setup swag docs config
+        run: swag init .
 
       - name: Run Tests
         run: go test -v ./...
