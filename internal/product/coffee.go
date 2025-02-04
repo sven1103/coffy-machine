@@ -12,57 +12,114 @@ type Coffee struct {
 	AggregateID string
 	Type        string
 	price       float64
+	cva         CuppingScore
 	events      []event.Event
 }
 
-func (b *Coffee) Events() []event.Event {
-	return b.events
+func (c *Coffee) CoffeeValue() CuppingScore {
+	return c.cva
 }
 
-func (b *Coffee) Price() float64 {
-	return b.price
+type CuppingScore struct {
+	value int
+}
+
+func newCuppingScore(value int) (*CuppingScore, error) {
+	if value < 58 || value > 100 {
+		return nil, errors.New("invalid cupping score")
+	}
+	return &CuppingScore{value: value}, nil
+}
+
+func (c *Coffee) SetCuppingScore(value int) error {
+	score, err := newCuppingScore(value)
+	if err != nil {
+		return err
+	}
+	e := newCvaProvided(c.AggregateID, score.value)
+	if err := c.apply(e); err != nil {
+		return errors.Join(
+			fmt.Errorf("could not set cupping score for %s [id: %s]",
+				c.Type, c.AggregateID), err)
+	}
+	return nil
+}
+
+func newCvaProvided(id string, value int) CvaProvided {
+	return CvaProvided{ID: id, Value: value, OccurredOn: time.Now()}
+}
+
+type CvaProvided struct {
+	ID         string
+	Value      int
+	EventType  string
+	OccurredOn time.Time
+}
+
+func (e CvaProvided) AggregateID() string {
+	return e.ID
+}
+
+func (e CvaProvided) Type() string {
+	return "CvaProvided"
+}
+
+func (e CvaProvided) Occurred() time.Time {
+	return e.OccurredOn
+}
+
+func (c *Coffee) Events() []event.Event {
+	return c.events
+}
+
+func (c *Coffee) Price() float64 {
+	return c.price
 }
 
 // ChangePrice updates the price of the current Coffee.
 //
 // Only values greater or equal zero are allowed.
-func (b *Coffee) ChangePrice(p float64, reason string) error {
+func (c *Coffee) ChangePrice(p float64, reason string) error {
 	if p <= 0 {
 		return errors.New("invalid price")
 	}
-	e := NewPriceUpdated(b.AggregateID, p, reason)
-	if err := b.apply(*e); err != nil {
+	e := NewPriceUpdated(c.AggregateID, p, reason)
+	if err := c.apply(*e); err != nil {
 		return errors.Join(
 			fmt.Errorf("could not change price for %s [id: %s]",
-				b.Type, b.AggregateID), err)
+				c.Type, c.AggregateID), err)
 	}
 	return nil
 }
 
 // Clear empties the current event cache of the coffee and removes all previously appended events.
-func (b *Coffee) Clear() {
-	b.events = []event.Event{}
+func (c *Coffee) Clear() {
+	c.events = []event.Event{}
 }
 
 // Load sets the state of the current coffee by applying all events iteratively.
 //
 // After all events have been applied to the account, the event cache is emptied.
-func (b *Coffee) Load(events []event.Event) error {
+func (c *Coffee) Load(events []event.Event) error {
 	for _, e := range events {
-		if err := b.apply(e); err != nil {
+		if err := c.apply(e); err != nil {
 			return fmt.Errorf("could not apply event: %v", err)
 		}
 	}
-	b.Clear()
+	c.Clear()
 	return nil
 }
 
-func (b *Coffee) apply(e event.Event) error {
+func (c *Coffee) apply(e event.Event) error {
 	switch theEvent := e.(type) {
 	case CoffeeCreated:
-		b.applyCreated(theEvent)
+		c.applyCreated(theEvent)
 	case PriceUpdated:
-		if err := b.applyNewPrice(theEvent); err != nil {
+		if err := c.applyNewPrice(theEvent); err != nil {
+			return err
+		}
+	case CvaProvided:
+		if err := c.applyCva(theEvent); err != nil {
 			return err
 		}
 	default:
@@ -71,20 +128,33 @@ func (b *Coffee) apply(e event.Event) error {
 	return nil
 }
 
-func (b *Coffee) applyNewPrice(e PriceUpdated) error {
-	if e.AggregateID() != b.AggregateID {
-		return fmt.Errorf("beverage ids do not match: expected %s, actual %s", b.AggregateID, e.AggregateID())
+func (c *Coffee) applyNewPrice(e PriceUpdated) error {
+	if e.AggregateID() != c.AggregateID {
+		return fmt.Errorf("coffee ids do not match: expected %s, actual %s", c.AggregateID, e.AggregateID())
 	}
-	b.price = e.Price
-	b.events = append(b.events, e)
+	c.price = e.Price
+	c.events = append(c.events, e)
 	return nil
 }
 
-func (b *Coffee) applyCreated(e CoffeeCreated) {
-	b.AggregateID = e.ID
-	b.Type = e.BeverageType
-	b.price = e.Price
-	b.events = append(b.events, e)
+func (c *Coffee) applyCreated(e CoffeeCreated) {
+	c.AggregateID = e.ID
+	c.Type = e.BeverageType
+	c.price = e.Price
+	c.events = append(c.events, e)
+}
+
+func (c *Coffee) applyCva(e CvaProvided) error {
+	if e.AggregateID() != c.AggregateID {
+		return fmt.Errorf("coffee ids do not match: expected %s, actual %s", c.AggregateID, e.AggregateID())
+	}
+	score, err := newCuppingScore(e.Value)
+	if err != nil {
+		return err
+	}
+	c.cva = *score
+	c.events = append(c.events, e)
+	return nil
 }
 
 type CoffeeCreated struct {

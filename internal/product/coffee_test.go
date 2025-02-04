@@ -1,6 +1,9 @@
 package product
 
-import "testing"
+import (
+	"coffy/internal/event"
+	"testing"
+)
 
 func TestNewCoffee(t *testing.T) {
 	b, err := NewCoffee("Black Coffee", 0.25)
@@ -61,6 +64,35 @@ func TestPriceUpdatePositiveOnly(t *testing.T) {
 	}
 	if err := bev.ChangePrice(newPrice, "Global warming!"); err == nil {
 		t.Errorf("ChangePrice() should have retured an error, since the new price was negative")
+		return
+	}
+}
+
+func TestCVA(t *testing.T) {
+	bev, _ := NewCoffee("Black Coffee", 0.25)
+	bev.Clear()
+
+	err := bev.SetCuppingScore(95)
+	if err != nil {
+		t.Errorf("SetCuppingScore() error = %v", err)
+		return
+	}
+
+	switch eType := bev.Events()[0].(type) {
+	case CvaProvided:
+		bev.Clear()
+		eType.Value = 89
+		list := make([]event.Event, 0)
+		list = append(list, eType)
+		err := bev.Load(list)
+		if err != nil {
+			t.Errorf("Load() error = %v", err)
+		}
+		if bev.cva.value != 89 {
+			t.Errorf("cva.value should have been 89")
+		}
+	default:
+		t.Errorf("Events() should have returned a 'CvaProvided' but was %T", eType)
 		return
 	}
 }
