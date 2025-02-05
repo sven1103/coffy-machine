@@ -64,7 +64,7 @@ func startCoffy(config *coffy.Config) {
 
 		// beverages API
 		v1.GET("/coffees", api.GetCoffees(beverageService))
-		v1.POST("/coffees", api.CreateBeverage(beverageService))
+		v1.POST("/coffees", api.CreateCoffee(beverageService))
 
 		// consume API
 		v1.POST("/consume", api.Consume(consumeService))

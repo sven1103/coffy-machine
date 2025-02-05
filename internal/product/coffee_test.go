@@ -88,8 +88,8 @@ func TestCVA(t *testing.T) {
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
-		if bev.cva.value != 89 {
-			t.Errorf("cva.value should have been 89")
+		if bev.cva.Value != 89 {
+			t.Errorf("cva.Value should have been 89")
 		}
 	default:
 		t.Errorf("Events() should have returned a 'CvaProvided' but was %T", eType)

@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// Coffee is the actual representation of the black gold.
 type Coffee struct {
 	AggregateID string
 	Type        string
@@ -16,27 +17,45 @@ type Coffee struct {
 	events      []event.Event
 }
 
-func (c *Coffee) CoffeeValue() CuppingScore {
-	return c.cva
+// CoffeeValue provides the assessed Value of the current coffee.
+// It is represented by a CuppingScore, which is the SCA standard metric
+// after a coffee Value assessment (CVA).
+func (c *Coffee) CoffeeValue() *CuppingScore {
+	return &c.cva
 }
 
+// Price returns the latest price of the coffee.
+func (c *Coffee) Price() float64 {
+	return c.price
+}
+
+// Events returns all uncommitted events of the current coffee aggregate
+func (c *Coffee) Events() []event.Event {
+	return c.events
+}
+
+// CuppingScore holds an assessment Value resulting from a coffee Value assessment, which is between 58 and 100 (both inclusive).
+// A score of 58 is the lowest Value possible, 100 the highest and represents the best coffee Value possible.
 type CuppingScore struct {
-	value int
+	Value int
 }
 
 func newCuppingScore(value int) (*CuppingScore, error) {
 	if value < 58 || value > 100 {
 		return nil, errors.New("invalid cupping score")
 	}
-	return &CuppingScore{value: value}, nil
+	return &CuppingScore{Value: value}, nil
 }
 
+// SetCuppingScore sets a standardized sensor-based quality metric that resulted from a coffee Value assessment (CVA).
+// The SCA normalised the score to be between an inclusive range of 58 (worst) and 100 (best). Values outside this range
+// will result in an error.
 func (c *Coffee) SetCuppingScore(value int) error {
 	score, err := newCuppingScore(value)
 	if err != nil {
 		return err
 	}
-	e := newCvaProvided(c.AggregateID, score.value)
+	e := newCvaProvided(c.AggregateID, score.Value)
 	if err := c.apply(e); err != nil {
 		return errors.Join(
 			fmt.Errorf("could not set cupping score for %s [id: %s]",
@@ -49,10 +68,12 @@ func newCvaProvided(id string, value int) CvaProvided {
 	return CvaProvided{ID: id, Value: value, OccurredOn: time.Now()}
 }
 
+// CvaProvided an event record about change in a coffee's Value assessment.
+//
+// In this case it is the CuppingScore, represented as a simple integer Value for the event.
 type CvaProvided struct {
 	ID         string
 	Value      int
-	EventType  string
 	OccurredOn time.Time
 }
 
@@ -66,14 +87,6 @@ func (e CvaProvided) Type() string {
 
 func (e CvaProvided) Occurred() time.Time {
 	return e.OccurredOn
-}
-
-func (c *Coffee) Events() []event.Event {
-	return c.events
-}
-
-func (c *Coffee) Price() float64 {
-	return c.price
 }
 
 // ChangePrice updates the price of the current Coffee.
