@@ -27,12 +27,13 @@ func GetCoffees(service *product.Service) func(*gin.Context) {
 	return func(c *gin.Context) {
 		bev, err := service.ListAll()
 		if err != nil {
+			log.Println(err)
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
 		}
 		list, err := allToCoffeeInfo(bev)
 		if err != nil {
-			log.Println("conversion to beverage info failed:", err)
+			log.Println("conversion to coffee info failed:", err)
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
 		}
@@ -41,47 +42,59 @@ func GetCoffees(service *product.Service) func(*gin.Context) {
 	}
 }
 
-// CreateBeverage creates a new coffee in coffy with an initial price.
+// CreateCoffee creates a new coffee in coffy with an initial price.
 //
 //	@Summary		create new coffee
 //	@Schemes		http
 //	@Description	Creates a new coffee in coffy.
 //	@ID				create-new-coffee
 //	@Tags			coffees
-//	@Param			request	body	CreateBeverageRequest	true	"coffee creation request"
+//	@Param			request	body	CreateCoffeeRequest	true	"coffee creation request"
 //	@Produce		json
 //	@Success		200	{object}	CoffeeInfo
 //	@Router			/coffees [post]
-func CreateBeverage(service *product.Service) func(*gin.Context) {
+func CreateCoffee(service *product.Service) func(*gin.Context) {
 	if service == nil {
 		return func(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{})
 		}
 	}
 	return func(c *gin.Context) {
-		var json CreateBeverageRequest
+		var json CreateCoffeeRequest
 		if err := c.ShouldBindJSON(&json); err != nil {
+			log.Println(err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		b, err := service.Create(json.Name, json.Price)
+		b, err := service.Create(json.Name, json.Price, json.CuppingScore)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{})
+			log.Println(err)
+			switch {
+			case errors.Is(err, product.InvalidPropertyError):
+				c.JSON(http.StatusBadRequest, gin.H{"error": "failed to create coffee: " + err.Error()})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{})
+			}
 			return
 		}
-		c.JSON(http.StatusCreated, CoffeeInfo{b.AggregateID, b.Type, b.Price()})
+
+		info := CoffeeInfo{ID: b.AggregateID, Name: b.Type, Price: b.Price(), CuppingScore: b.CoffeeValue().Value}
+
+		c.JSON(http.StatusCreated, info)
 	}
 }
 
-type CreateBeverageRequest struct {
-	Name  string  `form:"name" json:"name" binding:"required"`
-	Price float64 `form:"price" json:"price" binding:"required"`
+type CreateCoffeeRequest struct {
+	Name         string  `form:"name" json:"name" binding:"required"`
+	Price        float64 `form:"price" json:"price" binding:"required"`
+	CuppingScore *int    `form:"cupping_score" json:"cupping_score,omitempty"`
 }
 
 type CoffeeInfo struct {
-	ID   string  `json:"id"`
-	Name string  `json:"name"`
-	Cost float64 `json:"price"`
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+	Price        float64 `json:"price"`
+	CuppingScore int     `json:"cupping_score"`
 }
 
 func allToCoffeeInfo(list []product.Coffee) ([]CoffeeInfo, error) {
@@ -103,5 +116,5 @@ func toCoffeeInfo(b *product.Coffee) (CoffeeInfo, error) {
 	if b == nil {
 		return CoffeeInfo{}, errors.New("beverage is nil")
 	}
-	return CoffeeInfo{ID: b.AggregateID, Name: b.Type, Cost: b.Price()}, nil
+	return CoffeeInfo{ID: b.AggregateID, Name: b.Type, Price: b.Price(), CuppingScore: b.CoffeeValue().Value}, nil
 }

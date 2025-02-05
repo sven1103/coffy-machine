@@ -79,15 +79,29 @@ func convert(entry storage.EventEntry) (event.Event, error) {
 			return nil, err
 		}
 		return evnt, nil
+	case "CvaProvided":
+		evnt, err := toCvaProvided(entry)
+		if err != nil {
+			return nil, err
+		}
+		return evnt, nil
 	default:
 		return nil, fmt.Errorf("unknown event type '%s'", entry.EventType)
 	}
 }
 
-func (s *Service) Create(name string, price float64) (*Coffee, error) {
+var InvalidPropertyError = errors.New("invalid property")
+
+func (s *Service) Create(name string, price float64, score *int) (*Coffee, error) {
 	b, err := NewCoffee(name, price)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %s", InvalidPropertyError, err.Error())
+	}
+	if score != nil {
+		err = b.SetCuppingScore(*score)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", InvalidPropertyError, err.Error())
 	}
 
 	entries := make([]storage.EventEntry, 0)
@@ -119,8 +133,14 @@ func toEventEntry(event event.Event) (storage.EventEntry, error) {
 			return storage.EventEntry{}, err
 		}
 		return storage.EventEntry{AggregateID: t.AggregateID(), Date: t.OccurredOn, EventType: "PriceUpdated", EventData: data}, nil
+	case CvaProvided:
+		data, err := json.Marshal(t)
+		if err != nil {
+			return storage.EventEntry{}, err
+		}
+		return storage.EventEntry{AggregateID: t.AggregateID(), Date: t.OccurredOn, EventType: "CvaProvided", EventData: data}, nil
 	default:
-		return storage.EventEntry{}, errors.New("unknown event")
+		return storage.EventEntry{}, fmt.Errorf("unknown event type: %T", t)
 	}
 }
 
@@ -136,6 +156,14 @@ func toPriceUpdated(entry storage.EventEntry) (event.Event, error) {
 	e := PriceUpdated{}
 	if err := json.Unmarshal(entry.EventData, &e); err != nil {
 		return nil, fmt.Errorf("could not unmarshal event data as PriceUpdated: %w", err)
+	}
+	return e, nil
+}
+
+func toCvaProvided(entry storage.EventEntry) (event.Event, error) {
+	e := CvaProvided{}
+	if err := json.Unmarshal(entry.EventData, &e); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal event data: %w", err)
 	}
 	return e, nil
 }
