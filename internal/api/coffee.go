@@ -66,7 +66,7 @@ func CreateCoffee(service *product.Service) func(*gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		b, err := service.Create(json.Name, json.Price, json.CuppingScore)
+		b, err := service.Create(json.Name, json.Price, json.CuppingScore, &json.Details)
 		if err != nil {
 			log.Println(err)
 			switch {
@@ -85,16 +85,18 @@ func CreateCoffee(service *product.Service) func(*gin.Context) {
 }
 
 type CreateCoffeeRequest struct {
-	Name         string  `form:"name" json:"name" binding:"required"`
-	Price        float64 `form:"price" json:"price" binding:"required"`
-	CuppingScore *int    `form:"cupping_score" json:"cupping_score,omitempty"`
+	Name         string                `form:"name" json:"name" binding:"required"`
+	Price        float64               `form:"price" json:"price" binding:"required"`
+	CuppingScore *int                  `form:"cupping_score" json:"cupping_score,omitempty"`
+	Details      product.CoffeeDetails `form:"info" json:"info"`
 }
 
 type CoffeeInfo struct {
-	ID           string  `json:"id"`
-	Name         string  `json:"name"`
-	Price        float64 `json:"price"`
-	CuppingScore int     `json:"cupping_score"`
+	ID           string                `json:"id"`
+	Name         string                `json:"name"`
+	Price        float64               `json:"price"`
+	CuppingScore int                   `json:"cupping_score"`
+	Details      product.CoffeeDetails `json:"info"`
 }
 
 func allToCoffeeInfo(list []product.Coffee) ([]CoffeeInfo, error) {
@@ -116,5 +118,10 @@ func toCoffeeInfo(b *product.Coffee) (CoffeeInfo, error) {
 	if b == nil {
 		return CoffeeInfo{}, errors.New("beverage is nil")
 	}
-	return CoffeeInfo{ID: b.AggregateID, Name: b.Type, Price: b.Price(), CuppingScore: b.CoffeeValue().Value}, nil
+	d := toCoffeeDetails(b.Details())
+	return CoffeeInfo{ID: b.AggregateID, Name: b.Type, Price: b.Price(), CuppingScore: b.CoffeeValue().Value, Details: d}, nil
+}
+
+func toCoffeeDetails(d product.Details) product.CoffeeDetails {
+	return product.CoffeeDetails{Origin: d.Origin, Description: d.Description, Misc: d.Misc}
 }

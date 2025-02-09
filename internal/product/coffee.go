@@ -10,11 +10,12 @@ import (
 
 // Coffee is the actual representation of the black gold.
 type Coffee struct {
-	AggregateID string
-	Type        string
-	price       float64
-	cva         CuppingScore
-	events      []event.Event
+	AggregateID string        // The ID to identify the coffee in the system
+	Type        string        // What type of coffee it is, e.g. black coffee, espresso, ...
+	price       float64       // The current price of the coffee in €, e.g. 0.50 for 50 cents
+	cva         CuppingScore  // The coffee value assessment result, currently the CuppingScore
+	details     Details       // A more detailed description about the coffee
+	events      []event.Event // Uncommitted events of the aggregate
 }
 
 // CoffeeValue provides the assessed Value of the current coffee.
@@ -89,6 +90,49 @@ func (e CvaProvided) Occurred() time.Time {
 	return e.OccurredOn
 }
 
+// Details enables a containerised description with more detail of a Coffee.
+type Details struct {
+	Origin      string            `json:"origin"`      // The country the coffee has been produced
+	Description string            `json:"description"` // Some detailed description about the coffee
+	RoastHouse  string            `json:"roast_house"` // The location the coffee has been roasted
+	Misc        map[string]string `json:"misc"`        // An unstructured collection of key:values to provide more details
+}
+
+func (c *Coffee) Details() Details {
+	return c.details
+}
+
+// UpdateDetails sets some more detailed information for the current Coffee.
+func (c *Coffee) UpdateDetails(details Details) error {
+	e := NewDetailsUpdated(c.AggregateID, details)
+	if err := c.apply(e); err != nil {
+		return errors.Join(fmt.Errorf("could not update details for %s [id: %s]", c.Type, c.AggregateID), err)
+	}
+	return nil
+}
+
+type DetailsUpdated struct {
+	ID         string
+	Details    Details
+	OccurredOn time.Time
+}
+
+func (e DetailsUpdated) AggregateID() string {
+	return e.ID
+}
+
+func (e DetailsUpdated) Type() string {
+	return "DetailsUpdated"
+}
+
+func (e DetailsUpdated) Occurred() time.Time {
+	return e.OccurredOn
+}
+
+func NewDetailsUpdated(id string, details Details) DetailsUpdated {
+	return DetailsUpdated{ID: id, Details: details, OccurredOn: time.Now()}
+}
+
 // ChangePrice updates the price of the current Coffee.
 //
 // Only values greater or equal zero are allowed.
@@ -135,6 +179,10 @@ func (c *Coffee) apply(e event.Event) error {
 		if err := c.applyCva(theEvent); err != nil {
 			return err
 		}
+	case DetailsUpdated:
+		if err := c.applyDetails(theEvent); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("cannot apply event: unknown event '%T'", e)
 	}
@@ -166,6 +214,12 @@ func (c *Coffee) applyCva(e CvaProvided) error {
 		return err
 	}
 	c.cva = *score
+	c.events = append(c.events, e)
+	return nil
+}
+
+func (c *Coffee) applyDetails(e DetailsUpdated) error {
+	c.details = e.Details
 	c.events = append(c.events, e)
 	return nil
 }

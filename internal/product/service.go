@@ -85,14 +85,29 @@ func convert(entry storage.EventEntry) (event.Event, error) {
 			return nil, err
 		}
 		return evnt, nil
+	case "DetailsUpdated":
+		evnt, err := toDetailsUpdated(entry)
+		if err != nil {
+			return nil, err
+		}
+		return evnt, nil
 	default:
 		return nil, fmt.Errorf("unknown event type '%s'", entry.EventType)
 	}
 }
 
+func toDetailsUpdated(entry storage.EventEntry) (DetailsUpdated, error) {
+	e := DetailsUpdated{}
+	err := json.Unmarshal(entry.EventData, &e)
+	if err != nil {
+		return e, fmt.Errorf("failed to unmarshal expected DetailsUpdated event data: %w", err)
+	}
+	return e, nil
+}
+
 var InvalidPropertyError = errors.New("invalid property")
 
-func (s *Service) Create(name string, price float64, score *int) (*Coffee, error) {
+func (s *Service) Create(name string, price float64, score *int, details *CoffeeDetails) (*Coffee, error) {
 	b, err := NewCoffee(name, price)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", InvalidPropertyError, err.Error())
@@ -102,6 +117,18 @@ func (s *Service) Create(name string, price float64, score *int) (*Coffee, error
 	}
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", InvalidPropertyError, err.Error())
+	}
+
+	// Details are optional
+	if details != nil {
+		d := Details{
+			Origin:      details.Origin,
+			Description: details.Description,
+			RoastHouse:  details.RoastHouse,
+			Misc:        details.Misc}
+		if err = b.UpdateDetails(d); err != nil {
+			return nil, fmt.Errorf("%w: %s", InvalidPropertyError, err.Error())
+		}
 	}
 
 	entries := make([]storage.EventEntry, 0)
@@ -139,6 +166,12 @@ func toEventEntry(event event.Event) (storage.EventEntry, error) {
 			return storage.EventEntry{}, err
 		}
 		return storage.EventEntry{AggregateID: t.AggregateID(), Date: t.OccurredOn, EventType: "CvaProvided", EventData: data}, nil
+	case DetailsUpdated:
+		data, err := json.Marshal(t)
+		if err != nil {
+			return storage.EventEntry{}, err
+		}
+		return storage.EventEntry{AggregateID: t.AggregateID(), Date: t.OccurredOn, EventType: "DetailsUpdated", EventData: data}, nil
 	default:
 		return storage.EventEntry{}, fmt.Errorf("unknown event type: %T", t)
 	}
@@ -166,4 +199,11 @@ func toCvaProvided(entry storage.EventEntry) (event.Event, error) {
 		return nil, fmt.Errorf("failed to unmarshal event data: %w", err)
 	}
 	return e, nil
+}
+
+type CoffeeDetails struct {
+	Origin      string            `json:"origin"`
+	Description string            `json:"description"`
+	RoastHouse  string            `json:"roast_house"`
+	Misc        map[string]string `json:"misc"`
 }
