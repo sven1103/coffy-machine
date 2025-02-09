@@ -96,3 +96,28 @@ func TestCVA(t *testing.T) {
 		return
 	}
 }
+
+func TestDetails(t *testing.T) {
+	c, _ := NewCoffee("Black Coffee", 0.25)
+	c.Clear()
+
+	d := Details{"Kirinyaga County", "Kenianischer Waldkaffee", "", nil}
+
+	err := c.UpdateDetails(d)
+
+	if err != nil {
+		t.Errorf("UpdateDetails() error = %v", err)
+	}
+
+	if !(c.Details().Origin == "Kirinyaga County") {
+		t.Errorf("Details should have been Kirinyaga County")
+	}
+
+	switch c.Events()[0].(type) {
+	case DetailsUpdated:
+		break
+	default:
+		t.Errorf("Events() should have returned a DetailsUpdated, but returned %v", c.Events()[0])
+	}
+
+}
