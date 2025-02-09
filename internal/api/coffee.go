@@ -92,11 +92,11 @@ type CreateCoffeeRequest struct {
 }
 
 type CoffeeInfo struct {
-	ID            string                `json:"id"`
-	Name          string                `json:"name"`
-	Price         float64               `json:"price"`
-	CuppingScore  int                   `json:"cupping_score"`
-	CoffeeDetails product.CoffeeDetails `json:"info"`
+	ID           string                `json:"id"`
+	Name         string                `json:"name"`
+	Price        float64               `json:"price"`
+	CuppingScore int                   `json:"cupping_score"`
+	Details      product.CoffeeDetails `json:"info"`
 }
 
 func allToCoffeeInfo(list []product.Coffee) ([]CoffeeInfo, error) {
@@ -119,7 +119,7 @@ func toCoffeeInfo(b *product.Coffee) (CoffeeInfo, error) {
 		return CoffeeInfo{}, errors.New("beverage is nil")
 	}
 	d := toCoffeeDetails(b.Details())
-	return CoffeeInfo{ID: b.AggregateID, Name: b.Type, Price: b.Price(), CuppingScore: b.CoffeeValue().Value, CoffeeDetails: d}, nil
+	return CoffeeInfo{ID: b.AggregateID, Name: b.Type, Price: b.Price(), CuppingScore: b.CoffeeValue().Value, Details: d}, nil
 }
 
 func toCoffeeDetails(d product.Details) product.CoffeeDetails {
