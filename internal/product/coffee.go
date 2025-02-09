@@ -65,72 +65,12 @@ func (c *Coffee) SetCuppingScore(value int) error {
 	return nil
 }
 
-func newCvaProvided(id string, value int) CvaProvided {
-	return CvaProvided{ID: id, Value: value, OccurredOn: time.Now()}
-}
-
-// CvaProvided an event record about change in a coffee's Value assessment.
-//
-// In this case it is the CuppingScore, represented as a simple integer Value for the event.
-type CvaProvided struct {
-	ID         string
-	Value      int
-	OccurredOn time.Time
-}
-
-func (e CvaProvided) AggregateID() string {
-	return e.ID
-}
-
-func (e CvaProvided) Type() string {
-	return "CvaProvided"
-}
-
-func (e CvaProvided) Occurred() time.Time {
-	return e.OccurredOn
-}
-
 // Details enables a containerised description with more detail of a Coffee.
 type Details struct {
 	Origin      string            `json:"origin"`      // The country the coffee has been produced
 	Description string            `json:"description"` // Some detailed description about the coffee
 	RoastHouse  string            `json:"roast_house"` // The location the coffee has been roasted
 	Misc        map[string]string `json:"misc"`        // An unstructured collection of key:values to provide more details
-}
-
-func (c *Coffee) Details() Details {
-	return c.details
-}
-
-// UpdateDetails sets some more detailed information for the current Coffee.
-func (c *Coffee) UpdateDetails(details Details) error {
-	e := NewDetailsUpdated(c.AggregateID, details)
-	if err := c.apply(e); err != nil {
-		return errors.Join(fmt.Errorf("could not update details for %s [id: %s]", c.Type, c.AggregateID), err)
-	}
-	return nil
-}
-
-type DetailsUpdated struct {
-	ID         string
-	Details    Details
-	OccurredOn time.Time
-}
-
-func (e DetailsUpdated) AggregateID() string {
-	return e.ID
-}
-
-func (e DetailsUpdated) Type() string {
-	return "DetailsUpdated"
-}
-
-func (e DetailsUpdated) Occurred() time.Time {
-	return e.OccurredOn
-}
-
-func NewDetailsUpdated(id string, details Details) DetailsUpdated {
-	return DetailsUpdated{ID: id, Details: details, OccurredOn: time.Now()}
 }
 
 // ChangePrice updates the price of the current Coffee.
@@ -152,6 +92,34 @@ func (c *Coffee) ChangePrice(p float64, reason string) error {
 // Clear empties the current event cache of the coffee and removes all previously appended events.
 func (c *Coffee) Clear() {
 	c.events = []event.Event{}
+}
+
+func (c *Coffee) Details() Details {
+	return c.details
+}
+
+func NewCoffee(coffeeType string, price float64) (*Coffee, error) {
+	if coffeeType == "" {
+		return nil, errors.New("beverage type cannot be empty")
+	}
+	if price <= 0 {
+		return nil, errors.New("price must be greater than zero")
+	}
+	beverage := &Coffee{}
+	created := NewCoffeeCreated(uuid.NewString(), coffeeType, price)
+	if err := beverage.apply(*created); err != nil {
+		return nil, err
+	}
+	return beverage, nil
+}
+
+// UpdateDetails sets some more detailed information for the current Coffee.
+func (c *Coffee) UpdateDetails(details Details) error {
+	e := NewDetailsUpdated(c.AggregateID, details)
+	if err := c.apply(e); err != nil {
+		return errors.Join(fmt.Errorf("could not update details for %s [id: %s]", c.Type, c.AggregateID), err)
+	}
+	return nil
 }
 
 // Load sets the state of the current coffee by applying all events iteratively.
@@ -224,26 +192,37 @@ func (c *Coffee) applyDetails(e DetailsUpdated) error {
 	return nil
 }
 
+/*
+All coffee-related events
+*/
+
+type DetailsUpdated struct {
+	ID         string
+	Details    Details
+	OccurredOn time.Time
+}
+
+func (e DetailsUpdated) AggregateID() string {
+	return e.ID
+}
+
+func (e DetailsUpdated) Type() string {
+	return "DetailsUpdated"
+}
+
+func (e DetailsUpdated) Occurred() time.Time {
+	return e.OccurredOn
+}
+
+func NewDetailsUpdated(id string, details Details) DetailsUpdated {
+	return DetailsUpdated{ID: id, Details: details, OccurredOn: time.Now()}
+}
+
 type CoffeeCreated struct {
 	ID           string
 	BeverageType string
 	Price        float64
 	OccurredOn   time.Time
-}
-
-func NewCoffee(coffeeType string, price float64) (*Coffee, error) {
-	if coffeeType == "" {
-		return nil, errors.New("beverage type cannot be empty")
-	}
-	if price <= 0 {
-		return nil, errors.New("price must be greater than zero")
-	}
-	beverage := &Coffee{}
-	created := NewCoffeeCreated(uuid.NewString(), coffeeType, price)
-	if err := beverage.apply(*created); err != nil {
-		return nil, err
-	}
-	return beverage, nil
 }
 
 func NewCoffeeCreated(id string, coffeeType string, price float64) *CoffeeCreated {
@@ -282,5 +261,30 @@ func (e PriceUpdated) Type() string {
 }
 
 func (e PriceUpdated) Occurred() time.Time {
+	return e.OccurredOn
+}
+
+func newCvaProvided(id string, value int) CvaProvided {
+	return CvaProvided{ID: id, Value: value, OccurredOn: time.Now()}
+}
+
+// CvaProvided an event record about change in a coffee's Value assessment.
+//
+// In this case it is the CuppingScore, represented as a simple integer Value for the event.
+type CvaProvided struct {
+	ID         string
+	Value      int
+	OccurredOn time.Time
+}
+
+func (e CvaProvided) AggregateID() string {
+	return e.ID
+}
+
+func (e CvaProvided) Type() string {
+	return "CvaProvided"
+}
+
+func (e CvaProvided) Occurred() time.Time {
 	return e.OccurredOn
 }
