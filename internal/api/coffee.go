@@ -78,7 +78,7 @@ func CreateCoffee(service *product.Service) func(*gin.Context) {
 			return
 		}
 
-		info := CoffeeInfo{ID: b.AggregateID, Name: b.Type, Price: b.Price(), CuppingScore: b.CoffeeValue().Value}
+		info := CoffeeInfo{ID: b.AggregateID, Name: b.Type, Price: b.Price(), CuppingScore: b.CoffeeValue().Value, Details: toCoffeeDetails(b.Details())}
 
 		c.JSON(http.StatusCreated, info)
 	}
