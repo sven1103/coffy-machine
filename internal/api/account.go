@@ -139,7 +139,7 @@ type AccountAlias struct {
 	ID            string  `json:"id"`
 	Owner         string  `json:"owner"`
 	Balance       float64 `json:"balance"`
-	ConsumedTotal int     `json:"consumedTotal"`
+	ConsumedTotal int     `json:"consumed_total"`
 }
 
 type AccountCreationRequest struct {
