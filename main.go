@@ -7,6 +7,7 @@ import (
 	"coffy/internal/cmd"
 	"coffy/internal/coffy"
 	"coffy/internal/consume"
+	"coffy/internal/equipment"
 	"coffy/internal/product"
 	"coffy/internal/storage"
 	"fmt"
@@ -52,6 +53,7 @@ func startCoffy(config *coffy.Config) {
 	accService := account.NewAccounting(&repo)
 	beverageService := product.NewService(&repo)
 	consumeService := consume.NewService(accService, beverageService)
+	machineService := equipment.NewService(&repo)
 
 	router := gin.Default()
 	v1 := router.Group("/api/v1")
@@ -68,6 +70,10 @@ func startCoffy(config *coffy.Config) {
 
 		// consume API
 		v1.POST("/consume", api.Consume(consumeService))
+
+		// machine API
+		v1.GET("/machines", api.GetMachines(machineService))
+		v1.POST("/machines", api.CreateMachine(machineService))
 	}
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

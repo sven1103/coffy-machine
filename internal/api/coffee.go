@@ -51,7 +51,7 @@ func GetCoffees(service *product.Service) func(*gin.Context) {
 //	@Tags			coffees
 //	@Param			request	body	CreateCoffeeRequest	true	"coffee creation request"
 //	@Produce		json
-//	@Success		200	{object}	CoffeeInfo
+//	@Success		201	{object}	CoffeeInfo
 //	@Router			/coffees [post]
 func CreateCoffee(service *product.Service) func(*gin.Context) {
 	if service == nil {

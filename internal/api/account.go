@@ -95,7 +95,7 @@ func GetAccountById(service *account.Accounting) func(*gin.Context) {
 //	@Tags			accounts
 //	@Param			id	body	AccountCreationRequest	true	"account creation request"
 //	@Produce		json
-//	@Success		200	{object}	AccountAlias
+//	@Success		201	{object}	AccountAlias
 //	@Router			/accounts [post]
 func CreateAccount(service *account.Accounting) func(*gin.Context) {
 	if service == nil {
