@@ -61,6 +61,27 @@ func (s *Service) FindById(machineId string) (*Machine, error) {
 	return m, nil
 }
 
+func (s *Service) Create(brand string, model string) (*Machine, error) {
+	m, err := NewMachine(brand, model)
+	if err != nil {
+		return &Machine{}, err
+	}
+	entries := make([]storage.EventEntry, 0)
+	for _, e := range m.Events() {
+		entry, err := toEventEntry(e)
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, entry)
+	}
+	if err = s.repo.SaveAll(entries); err != nil {
+		return &Machine{}, err
+	}
+	m.Clear()
+	return m, nil
+
+}
+
 func convert(entry storage.EventEntry) (event.Event, error) {
 	switch entry.EventType {
 	case "MachineCreated":
@@ -72,6 +93,19 @@ func convert(entry storage.EventEntry) (event.Event, error) {
 	default:
 		return nil, fmt.Errorf("unknown event type: %s", entry.EventType)
 
+	}
+}
+
+func toEventEntry(e event.Event) (storage.EventEntry, error) {
+	switch t := e.(type) {
+	case MachineCreated:
+		data, err := json.Marshal(t)
+		if err != nil {
+			return storage.EventEntry{}, err
+		}
+		return storage.EventEntry{AggregateID: e.AggregateID(), EventType: e.Type(), Date: e.Occurred(), EventData: data}, nil
+	default:
+		return storage.EventEntry{}, fmt.Errorf("unkown event type: %T", t)
 	}
 }
 
