@@ -74,6 +74,7 @@ func startCoffy(config *coffy.Config) {
 		// machine API
 		v1.GET("/machines", api.GetMachines(machineService))
 		v1.POST("/machines", api.CreateMachine(machineService))
+		v1.PATCH("/machines/:id", api.PatchMachines(machineService, beverageService))
 	}
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

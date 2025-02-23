@@ -33,7 +33,7 @@ func (m *Machine) Clear() {
 }
 
 func (m *Machine) Load(coffeeID string) error {
-	e := CoffeeLoaded{CoffeeID: coffeeID, MachineID: m.AggregateID}
+	e := CoffeeLoaded{CoffeeID: coffeeID, MachineID: m.AggregateID, OccurredOn: time.Now()}
 	if err := m.apply(e); err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func (e MachineCreated) Type() string {
 }
 
 type CoffeeLoaded struct {
-	MachineID  string    `json:"machine_id"` // the affected machine
+	MachineID  string    `json:"id"`         // the affected machine
 	CoffeeID   string    `json:"coffee_id"`  // the loaded coffee (ID)
 	OccurredOn time.Time `json:"occurredOn"` // the event time point
 }

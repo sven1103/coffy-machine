@@ -58,6 +58,7 @@ func (s *Service) FindById(machineId string) (*Machine, error) {
 			return nil, fmt.Errorf(errorMsg, machineId)
 		}
 	}
+	m.Clear()
 	return m, nil
 }
 
@@ -82,10 +83,42 @@ func (s *Service) Create(brand string, model string) (*Machine, error) {
 
 }
 
+func (s *Service) LoadCoffee(machineId string, coffeeId string) (*Machine, error) {
+	m, err := s.FindById(machineId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load machine '%s': %w", coffeeId, err)
+	}
+	err = m.Load(coffeeId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load coffee '%s': %w", coffeeId, err)
+	}
+	events := m.Events()
+	entries := make([]storage.EventEntry, 0)
+	for _, e := range events {
+		entry, err := toEventEntry(e)
+		if err != nil {
+			return nil, errors.Join(errors.New("failed to load coffee"), err)
+		}
+		entries = append(entries, entry)
+	}
+	err = s.repo.SaveAll(entries)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save update'%s': %w", coffeeId, err)
+	}
+	m.Clear()
+	return m, nil
+}
+
 func convert(entry storage.EventEntry) (event.Event, error) {
 	switch entry.EventType {
 	case "MachineCreated":
 		evnt, err := toMachineCreated(entry)
+		if err != nil {
+			return nil, err
+		}
+		return evnt, nil
+	case "CoffeeLoaded":
+		evnt, err := toCoffeeLoaded(entry)
 		if err != nil {
 			return nil, err
 		}
@@ -96,6 +129,15 @@ func convert(entry storage.EventEntry) (event.Event, error) {
 	}
 }
 
+func toCoffeeLoaded(entry storage.EventEntry) (CoffeeLoaded, error) {
+	evnt := CoffeeLoaded{}
+	err := json.Unmarshal(entry.EventData, &evnt)
+	if err != nil {
+		return CoffeeLoaded{}, fmt.Errorf("failed to unmarshal event data: %w", err)
+	}
+	return evnt, nil
+}
+
 func toEventEntry(e event.Event) (storage.EventEntry, error) {
 	switch t := e.(type) {
 	case MachineCreated:
@@ -103,9 +145,15 @@ func toEventEntry(e event.Event) (storage.EventEntry, error) {
 		if err != nil {
 			return storage.EventEntry{}, err
 		}
-		return storage.EventEntry{AggregateID: e.AggregateID(), EventType: e.Type(), Date: e.Occurred(), EventData: data}, nil
+		return storage.EventEntry{AggregateID: e.AggregateID(), EventType: "MachineCreated", Date: e.Occurred(), EventData: data}, nil
+	case CoffeeLoaded:
+		data, err := json.Marshal(t)
+		if err != nil {
+			return storage.EventEntry{}, err
+		}
+		return storage.EventEntry{AggregateID: e.AggregateID(), EventType: "CoffeeLoaded", Date: e.Occurred(), EventData: data}, nil
 	default:
-		return storage.EventEntry{}, fmt.Errorf("unkown event type: %T", t)
+		return storage.EventEntry{}, fmt.Errorf("failed to convert event to entry: unkown event type '%T'", t)
 	}
 }
 
