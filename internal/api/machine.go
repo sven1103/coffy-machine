@@ -2,6 +2,7 @@ package api
 
 import (
 	"coffy/internal/equipment"
+	"coffy/internal/product"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"log"
@@ -17,14 +18,14 @@ type MachineAlias struct {
 
 // GetMachines lists all available machines in coffy.
 //
-// @Summary list all machines
-// @Schemes http
-// @Description Lists all available machines in coffy.
-// @ID list-machines
-// @Tags machines
-// @Produce json
-// @Success 200 {array} MachineAlias
-// @Router /machines [get]
+//	@Summary		list all machines
+//	@Schemes		http
+//	@Description	Lists all available machines in coffy.
+//	@ID				list-machines
+//	@Tags			machines
+//	@Produce		json
+//	@Success		200	{array}	MachineAlias
+//	@Router			/machines [get]
 func GetMachines(service *equipment.Service) func(*gin.Context) {
 	if service == nil {
 		return func(c *gin.Context) {
@@ -48,15 +49,15 @@ func GetMachines(service *equipment.Service) func(*gin.Context) {
 
 // CreateMachine creates a new coffee machine entry with a unique ID.
 //
-// @Summary creates a machine
-// @Schemes http
-// @Description Creates a new machine in coffy.
-// @ID create-new-machine
-// @Tags machines
-// @Param id body MachineCreationRequest true "machine creation request"
-// @Produce json
-// @Success 201 {object} MachineAlias
-// @Router /machines [post]
+//	@Summary		creates a machine
+//	@Schemes		http
+//	@Description	Creates a new machine in coffy.
+//	@ID				create-new-machine
+//	@Tags			machines
+//	@Param			id	body	MachineCreationRequest	true	"machine creation request"
+//	@Produce		json
+//	@Success		201	{object}	MachineAlias
+//	@Router			/machines [post]
 func CreateMachine(service *equipment.Service) func(*gin.Context) {
 	if service == nil {
 		return func(c *gin.Context) {
@@ -83,6 +84,51 @@ func CreateMachine(service *equipment.Service) func(*gin.Context) {
 	}
 }
 
+// PatchMachines creates a new coffee machine entry with a unique ID.
+//
+//	@Summary		changes the loaded coffee
+//	@Schemes		http
+//	@Description	Changes the coffee currently loaded in the machine.
+//	@ID				change-machine-coffee
+//	@Tags			machines
+//	@Param			request	body	LoadCoffeeRequest	true	"machine loading request"
+//	@Param			id		path	string				true	"machine ID"
+//	@Produce		json
+//	@Success		200	{object}	MachineAlias
+//	@Failure		404	{ object }	map[string]string
+//	@Router			/machines/{id} [patch]
+func PatchMachines(service *equipment.Service, coffeeService *product.Service) func(*gin.Context) {
+	if service == nil || coffeeService == nil {
+		return func(c *gin.Context) {
+			log.Println(errors.New("machine service or coffee service is nil"))
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+	}
+	return func(c *gin.Context) {
+		machineId := c.Param("id")
+		var request = LoadCoffeeRequest{}
+		if err := c.BindJSON(&request); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+			return
+		}
+		coffee, err := coffeeService.Find(request.CoffeeID)
+		if err != nil {
+			log.Println(err)
+			c.JSON(http.StatusNotFound, "unknown resource: coffee not found")
+			return
+		}
+		machine, err := service.LoadCoffee(machineId, coffee.AggregateID)
+		if err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+		c.JSON(http.StatusOK, toAlias(*machine))
+	}
+}
+
 func toAlias(m equipment.Machine) MachineAlias {
 	coffeeId, err := m.Coffee()
 	if err != nil {
@@ -99,4 +145,8 @@ func toAlias(m equipment.Machine) MachineAlias {
 type MachineCreationRequest struct {
 	Model string `json:"model"`
 	Brand string `json:"brand"`
+}
+
+type LoadCoffeeRequest struct {
+	CoffeeID string `json:"coffee_id"`
 }
