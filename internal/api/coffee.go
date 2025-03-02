@@ -42,6 +42,92 @@ func GetCoffees(service *product.Service) func(*gin.Context) {
 	}
 }
 
+// PatchCoffeeDetails updates the information about a coffee
+//
+//	@Summary		changes the details for a coffee
+//	@Schemes		http
+//	@Description	Changes the coffee details information.
+//	@ID				change-details-coffee
+//	@Tags			coffees
+//	@Param			request	body	DetailsUpdateRequest	true	"coffee details update request"
+//	@Param			id		path	string					true	"coffee ID"
+//	@Produce		json
+//	@Success		200	{object}	CoffeeInfo
+//	@Failure		404	{ object }	map[string]string
+//	@Router			/coffees/{id}/info [patch]
+func PatchCoffeeDetails(service *product.Service) func(*gin.Context) {
+	if service == nil {
+		return func(c *gin.Context) {
+			c.JSON(http.StatusInternalServerError, gin.H{})
+		}
+	}
+	return func(c *gin.Context) {
+		coffeeID := c.Param("id")
+		coffee, err := service.Find(coffeeID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{})
+		}
+		details := product.Details{}
+		if err := c.ShouldBindJSON(&details); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{})
+		}
+		err = coffee.UpdateDetails(details)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{})
+		}
+		info, err := toCoffeeInfo(coffee)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{})
+		}
+		c.JSON(http.StatusOK, info)
+	}
+}
+
+// PatchCoffeePrice updates the price for a coffee
+//
+//	@Summary		changes the price for a coffee
+//	@Schemes		http
+//	@Description	Changes the coffee price.
+//	@ID				change-price-coffee
+//	@Tags			coffees
+//	@Param			request	body	PriceUpdateRequest	true	"coffee price change request"
+//	@Param			id		path	string				true	"coffee ID"
+//	@Produce		json
+//	@Success		200	{object}	CoffeeInfo
+//	@Failure		404	{ object }	map[string]string
+//	@Router			/coffees/{id}/price [patch]
+func PatchCoffeePrice(service *product.Service) func(*gin.Context) {
+	if service == nil {
+		return func(c *gin.Context) {
+			c.JSON(http.StatusInternalServerError, gin.H{})
+		}
+	}
+	return func(c *gin.Context) {
+		coffeeID := c.Param("id")
+		coffee, err := service.Find(coffeeID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{})
+			return
+		}
+		request := PriceUpdateRequest{}
+		if err := c.ShouldBindJSON(&request); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{})
+			return
+		}
+		err = coffee.ChangePrice(request.Price, request.Reason)
+		if err != nil {
+			if err.Error() == "invalid price" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+		info, err := toCoffeeInfo(coffee)
+		c.JSON(http.StatusOK, info)
+	}
+}
+
 // CreateCoffee creates a new coffee in coffy with an initial price.
 //
 //	@Summary		create new coffee
@@ -89,6 +175,15 @@ type CreateCoffeeRequest struct {
 	Price        float64               `form:"price" json:"price" binding:"required"`
 	CuppingScore *int                  `form:"cupping_score" json:"cupping_score,omitempty"`
 	Details      product.CoffeeDetails `form:"info" json:"info"`
+}
+
+type PriceUpdateRequest struct {
+	Price  float64 `form:"price" json:"price" binding:"required"`
+	Reason string  `form:"reason" json:"reason" binding:"required"`
+}
+
+type DetailsUpdateRequest struct {
+	Details product.CoffeeDetails `form:"info" json:"info"`
 }
 
 type CoffeeInfo struct {
